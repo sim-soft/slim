@@ -1,0 +1,27 @@
+{
+  "name": "simsoft/slim",
+  "description": "A nice routing wrapper for Slim framework",
+  "keywords": [
+    "slim",
+    "slimframework",
+    "symfony",
+    "php",
+    "simsoft"
+  ],
+  "type": "library",
+  "require": {
+    "php": ">=8.2",
+    "slim/psr7": "^1.6",
+    "slim/slim": "^4"
+  },
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Simsoft\\Slim\\": "src",
+      "Example\\": "example"
+    }
+  },
+  "scripts": {
+    "test": "phpunit tests"
+  }
+}

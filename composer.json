@@ -17,7 +17,11 @@
   "license": "MIT",
   "autoload": {
     "psr-4": {
-      "Simsoft\\Slim\\": "src",
+      "Simsoft\\Slim\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
       "Example\\": "example"
     }
   },

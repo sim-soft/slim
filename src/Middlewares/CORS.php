@@ -41,7 +41,7 @@ class CORS
         $response = $handler->handle($request);
 
         foreach ($this->config as $header => $value) {
-            $response->withHeader('Access-Control-Allow-' . $header, $value);
+            $response = $response->withHeader('Access-Control-Allow-' . $header, $value);
         }
 
         return $response;

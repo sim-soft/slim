@@ -5,6 +5,8 @@ namespace Simsoft\Slim;
 use DateTime;
 use DateTimeInterface;
 use DateTimeZone;
+use Exception;
+use JetBrains\PhpStorm\NoReturn;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 
@@ -31,11 +33,21 @@ class Response
     public static ResponseInterface $response;
 
     /**
+     * Constructor
+     *
+     * @return void
+     */
+    final public function __construct()
+    {
+
+    }
+
+    /**
      * Get instance.
      *
-     * @return $this
+     * @return Response
      */
-    public static function getInstance(): static
+    public static function getInstance(): Response
     {
         return new static();
     }
@@ -43,16 +55,17 @@ class Response
     /**
      * Set content.
      *
-     * @param string|array $content
+     * @param string|string[] $content
      * @return $this
+     * @throws Exception
      */
     public function content(string|array $content): static
     {
         if (is_array($content)) {
-            $this->json($content);
-        } else {
-            static::$response->getBody()->write($content);
+            return $this->json($content);
         }
+
+        static::$response->getBody()->write($content);
         return $this;
     }
 
@@ -72,14 +85,20 @@ class Response
     /**
      * Set JSON content.
      *
-     * @param array $data
+     * @param string[] $data
      * @return $this
+     * @throws Exception
      */
     public function json(array $data): static
     {
-        static::$response->getBody()->write(json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        static::$response = static::$response->withHeader('Content-Type', 'application/json');
-        return $this;
+        $content = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        if ($content) {
+            static::$response->getBody()->write($content);
+            static::$response = static::$response->withHeader('Content-Type', 'application/json');
+            return $this;
+        }
+
+        throw new Exception('Failed to convert response to JSON');
     }
 
     /**
@@ -97,7 +116,7 @@ class Response
 
     /**
      * @param string $name
-     * @param string|array $value
+     * @param string|string[] $value
      * @return $this
      */
     public function header(string $name, string|array $value): static
@@ -109,7 +128,7 @@ class Response
     /**
      * Set headers.
      *
-     * @param array $headers
+     * @param string[] $headers
      * @return $this
      */
     public function withHeaders(array $headers): static
@@ -121,20 +140,42 @@ class Response
     }
 
     /**
+     * Redirect to URL
+     *
+     * @param string $url Target redirect URL.
+     * @param int $code Status code. Default: 301
+     * @param DateTime|null $cache Enable cache.
+     * @return void
+     */
+    #[NoReturn] public function redirect(string $url, int $code = 301, ?DateTime $cache = null): void
+    {
+        if ($cache) {
+            $cache->setTimeZone(new DateTimeZone('GMT'));
+            header('Expires: ' . date_format($cache, DateTimeInterface::RFC7231));
+            header('Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0');
+        }
+        header("Location: $url", true, $code);
+        exit();
+    }
+
+    /**
      * Magic call
      *
      * @param string $name Method name of \Slim\Psr7\Response
-     * @param array $args
+     * @param string[] $args
      * @return mixed
      */
     public function __call(string $name, array $args): mixed
     {
         if (method_exists(static::$response, $name)) {
-            $return = call_user_func_array([static::$response, $name], $args);
-            if ($return instanceof ResponseInterface) {
-                static::$response = $return;
+            $callable = [static::$response, $name];
+            if (is_callable($callable)) {
+                $return = call_user_func_array($callable, $args);
+                if ($return instanceof ResponseInterface) {
+                    static::$response = $return;
+                }
+                return $return;
             }
-            return $return;
         }
 
         return null;
@@ -146,9 +187,10 @@ if (!function_exists('response')) {
     /**
      * Add flash message for next request.
      *
-     * @param string|array|null $content Response content.
+     * @param string|string[]|null $content Response content.
      * @param int|null $code Status code.
      * @return Response
+     * @throws Exception
      */
     function response(string|array|null $content = null, ?int $code = null): Response
     {
@@ -159,33 +201,9 @@ if (!function_exists('response')) {
         }
 
         if ($code) {
-            $response->Status($code);
+            $response->status($code);
         }
 
         return $response;
     }
 }
-
-if (!function_exists('redirect')) {
-    /**
-     * Add flash message for next request.
-     *
-     * @param string $url Target redirect URL.
-     * @param int $code Status code. Default: 301
-     * @param DateTime|null $cache Enable cache.
-     * @return null
-     */
-    function redirect(string $url, int $code = 301, ?DateTime $cache = null): null
-    {
-        if ($cache) {
-            $cache->setTimeZone(new DateTimeZone('GMT'));
-            Response::$response = Response::$response
-                ->withHeader('Expires', date_format($cache, DateTimeInterface::RFC7231))
-                ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0');
-        }
-
-        Response::$response = Response::$response->withHeader('Location', $url)->withStatus($code);
-        return null;
-    }
-}
-

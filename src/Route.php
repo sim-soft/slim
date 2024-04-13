@@ -2,6 +2,7 @@
 
 namespace Simsoft\Slim;
 
+use Exception;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
@@ -11,6 +12,7 @@ use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Factory\ServerRequestCreatorFactory;
 use Slim\Handlers\ErrorHandler;
+use Slim\Interfaces\InvocationStrategyInterface;
 use Slim\ResponseEmitter;
 
 /**
@@ -29,7 +31,7 @@ class Route
      *
      * @param ContainerInterface|null $container
      */
-    public function __construct(?ContainerInterface $container = null)
+    final public function __construct(?ContainerInterface $container = null)
     {
         $this->app = AppFactory::create(container: $container);
         $this->app->addBodyParsingMiddleware();
@@ -87,7 +89,10 @@ class Route
      */
     public function withRouting(callable $routes, ?string $cachePath = null, string $invocationStrategy = Args::class): static
     {
-        $this->app->getRouteCollector()->setDefaultInvocationStrategy(new $invocationStrategy());
+        $strategy = new $invocationStrategy();
+        if ($strategy instanceof InvocationStrategyInterface) {
+            $this->app->getRouteCollector()->setDefaultInvocationStrategy($strategy);
+        }
 
         $routes($this->app);
         URL::setParser($this->app->getRouteCollector()->getRouteParser());
@@ -120,6 +125,7 @@ class Route
      * @param bool $logErrorDetails Log error details. Default: false.
      * @param LoggerInterface|null $logger Set error logger. Default: null.
      * @return $this
+     * @throws Exception
      */
     public function withErrorHandler(
         bool             $displayError = false,
@@ -130,21 +136,27 @@ class Route
         string           $shutdownHandlerClass = ShutdownHandler::class
     ): static
     {
-        // Create Shutdown Handler
-        register_shutdown_function(
-            new $shutdownHandlerClass($this->getRequest(),
+        $errorHandlerCallable = new $errorHandlerClass($this->app->getCallableResolver(), $this->app->getResponseFactory());
+        if (!is_callable($errorHandlerCallable)) {
+            throw new Exception('Invalid Error handler provided');
+        }
 
-                // Add Error Middleware
-                $this->app->addErrorMiddleware($displayError, $logError, $logErrorDetails, $logger)
-                    // Create Error Handler
-                    ->setDefaultErrorHandler(
-                        new $errorHandlerClass($this->app->getCallableResolver(), $this->app->getResponseFactory())
-                    )
-                    ->getDefaultErrorHandler(),
+        $shutdownHandler = new $shutdownHandlerClass($this->getRequest(),
 
-                $displayError
-            )
+            // Add Error Middleware
+            $this->app->addErrorMiddleware($displayError, $logError, $logErrorDetails, $logger)
+                // Create Error Handler
+                ->setDefaultErrorHandler($errorHandlerCallable)
+                ->getDefaultErrorHandler(),
+
+            $displayError
         );
+
+        if (is_callable($shutdownHandler)) {
+            // Create Shutdown Handler
+            register_shutdown_function($shutdownHandler);
+        }
+
         return $this;
     }
 
@@ -155,7 +167,14 @@ class Route
      */
     public function run(): void
     {
-        // Run App & Emit Response
-        (new ResponseEmitter())->emit($this->app->handle($this->getRequest()));
+        $request = $this->getRequest();
+        if ($request) {
+
+            Request::$request = $request;
+            Response::$response = $this->app->handle($request);
+
+            // Run App & Emit Response
+            (new ResponseEmitter())->emit(Response::$response);
+        }
     }
 }

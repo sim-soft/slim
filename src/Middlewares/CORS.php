@@ -16,7 +16,7 @@ class CORS
     /**
      * Constructor
      *
-     * @param array $config
+     * @param string[] $config
      */
     public function __construct(protected array $config = [])
     {

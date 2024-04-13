@@ -41,6 +41,17 @@ class URL
     }
 
     /**
+     * Get server data.
+     *
+     * @param string $key
+     * @return string|null
+     */
+    protected static function server(string $key): ?string
+    {
+        return $_SERVER[$key] ?? null;
+    }
+
+    /**
      * Get domain name.
      *
      * @return string|null
@@ -48,7 +59,8 @@ class URL
     public static function getDomain(): ?string
     {
         if (static::$domain === null) {
-            static::$domain = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+            static::$domain = (static::server('HTTPS') ? 'http' : 'https')
+                . "://" . static::server('HTTP_HOST') . static::server('REQUEST_URI');
         }
         return static::$domain;
     }
@@ -57,8 +69,8 @@ class URL
      * Get route URL.
      *
      * @param string $routeName Route name.
-     * @param array $data
-     * @param array $queryParams
+     * @param string[] $data
+     * @param string[] $queryParams
      * @return string
      */
     public static function for(string $routeName, array $data = [], array $queryParams = []): string
@@ -71,17 +83,22 @@ class URL
      * Get route full URL (included domain).
      *
      * @param string $routeName Route name.
-     * @param array $data
-     * @param array $queryParams
+     * @param string[] $data
+     * @param string[] $queryParams
      * @return string
      */
     public static function fullFor(string $routeName, array $data = [], array $queryParams = []): string
     {
-        [$protocol, $url] = explode('://',
-            self::$routeParser->fullUrlFor(
-                (new UriFactory())->createUri(static::getDomain()), $routeName, $data, $queryParams)
-        );
-        return "$protocol://" . strtr($url, ['//' => '/']);
+        $domain = static::getDomain();
+        if ($domain) {
+            [$protocol, $url] = explode('://',
+                self::$routeParser->fullUrlFor(
+                    (new UriFactory())->createUri($domain), $routeName, $data, $queryParams)
+            );
+            return "$protocol://" . strtr($url, ['//' => '/']);
+        }
+
+        return strtr(self::$routeParser->urlFor($routeName, $data, $queryParams), ['//' => '/']);
     }
 
 }

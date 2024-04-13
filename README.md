@@ -266,7 +266,7 @@ Route::make($container)
     ->run();
 ```
 
-## Request, Response, and Redirect Usage
+## Request and Response Usage
 
 Handing request, response and redirect.
 
@@ -316,6 +316,7 @@ to: [Slim Response Tutorial](https://www.slimframework.com/docs/v4/objects/respo
 namespace App;
 
 use function Simsoft\Slim\response;
+use function Simsoft\Slim\request;
 
 class AppController
 {
@@ -337,51 +338,13 @@ class AppController
             'Content-Type' => 'text/html',
             'X-app' => 'Slim route',
         ])
+
+        // Redirect
+        response()->redirect('https://www.somedomain.com');   // normal usage.
+        response()->redirect('/url-slug', 302);               // redirect with status code
+        response()->redirect(request()->urlFor('route_name')) // use with slim route.
     }
 }
-```
-
-### Auto Content-type
-
-Simply return string or array, the output will be in
-
-```php
-<?php
-namespace App;
-
-class AppController
-{
-    public function action1()
-    {
-        // Return Content-Type: text/html.
-        return 'Hello World';
-    }
-
-    public function action2()
-    {
-        // Return Content-Type: application/json
-        return ['status' => 'success', 'message' => 'Welcome'];
-    }
-}
-```
-
-### Redirect Method
-
-```php
-<?php
-use function Simsoft\Slim\redirect;
-
-/**
-  * Redirect usage example.
-  * @return null
- */
-public function action2(): null
-{
-    return redirect('https://www.somedomain.com');   // normal usage.
-    return redirect('/url-slug', 302);               // redirect with status code
-    return redirect(request()->urlFor('route_name')) // use with slim route.
-}
-
 ```
 
 ## Create Customized Error Handler

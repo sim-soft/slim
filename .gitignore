@@ -57,3 +57,5 @@ nbproject/
 
 *.icloud
 *.cache
+
+composer.phar

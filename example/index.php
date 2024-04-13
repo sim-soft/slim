@@ -8,7 +8,7 @@ use Simsoft\Slim\Route;
 use Simsoft\Slim\URL;
 
 Route::make()
-    ->withBasePath('/simsoft/Slim/example/')
+    ->withBasePath('/simsoft/slim/example/')
     ->withErrorHandler(true, true, true, errorHandlerClass: MyErrorHandler::class)
     ->withMiddleware(require_once 'app/middleware.php')
     ->withRouting(

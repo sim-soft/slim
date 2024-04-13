@@ -55,6 +55,16 @@ class Request
     protected static ?RouteContext $routeContext = null;
 
     /**
+     * Constructor
+     *
+     * @return void
+     */
+    final public function __construct()
+    {
+
+    }
+
+    /**
      * Get instance.
      *
      * @return static
@@ -94,17 +104,17 @@ class Request
      */
     public function getRouteName(): ?string
     {
-        return $this->getRoute()->getName();
+        return $this->getRoute()?->getName();
     }
 
     /**
      * Get route's unique identifier.
      *
-     * @return string
+     * @return string|null
      */
-    public function getRouteIdentifier(): string
+    public function getRouteIdentifier(): ?string
     {
-        return $this->getRoute()->getIdentifier();
+        return $this->getRoute()?->getIdentifier();
     }
 
     /**
@@ -116,17 +126,17 @@ class Request
      */
     public function getArgument(string $name, ?string $default = null): ?string
     {
-        return $this->getRoute()->getArgument($name, $default);
+        return $this->getRoute()?->getArgument($name, $default);
     }
 
     /**
      * Retrieve route arguments.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function getArguments(): array
     {
-        return $this->getRoute()->getArguments();
+        return $this->getRoute()?->getArguments() ?? [];
     }
 
     /**
@@ -143,8 +153,8 @@ class Request
      * Build the path for a named route excluding the base path.
      *
      * @param string $routeName Route name.
-     * @param array $data Named argument replacement data.
-     * @param array $queryParams Optional query string parameters.
+     * @param string[] $data Named argument replacement data.
+     * @param string[] $queryParams Optional query string parameters.
      * @return string
      */
     public function relativeUrlFor(string $routeName, array $data = [], array $queryParams = []): string
@@ -156,8 +166,8 @@ class Request
      * Build the path for a named route including the base path.
      *
      * @param string $routeName Route name.
-     * @param array $data Named argument replacement data.
-     * @param array $queryParams Optional query string parameters.
+     * @param string[] $data Named argument replacement data.
+     * @param string[] $queryParams Optional query string parameters.
      * @return string
      */
     public function urlFor(string $routeName, array $data = [], array $queryParams = []): string
@@ -169,15 +179,20 @@ class Request
      * Get fully qualified URL for named route.
      *
      * @param string $routeName Route name.
-     * @param array $data Named argument replacement data.
-     * @param array $queryParams Optional query string parameters.
+     * @param string[] $data Named argument replacement data.
+     * @param string[] $queryParams Optional query string parameters.
      * @return string
      */
     public function fullUrlFor(string $routeName, array $data = [], array $queryParams = []): string
     {
-        return $this->getRouteContext()
-            ->getRouteParser()
-            ->fullUrlFor((new UriFactory())->createUri(URL::getDomain()), $routeName, $data, $queryParams);
+        $domain = URL::getDomain();
+        if ($domain) {
+            return $this->getRouteContext()
+                ->getRouteParser()
+                ->fullUrlFor((new UriFactory())->createUri($domain), $routeName, $data, $queryParams);
+        }
+
+        return $this->getRouteContext()->getRouteParser()->urlFor($routeName, $data, $queryParams);
     }
 
     /**
@@ -204,7 +219,7 @@ class Request
     /**
      * Request's allowed methods.
      *
-     * @param array $methods Allowed methods.
+     * @param string[] $methods Allowed methods.
      * @param string|null $message
      * @return void
      */
@@ -229,7 +244,7 @@ class Request
      *
      * @param string $name Case-insensitive header field name.
      * @param string $default Default header value.
-     * @return mixed
+     * @return string
      */
     public function header(string $name, string $default = ''): string
     {
@@ -255,17 +270,21 @@ class Request
      * Magic method call.
      *
      * @param string $name
-     * @param array $args
+     * @param array<int, string> $args
      * @return mixed
      */
     public function __call(string $name, array $args): mixed
     {
         if (method_exists(static::$request, $name)) {
-            $return = call_user_func_array([static::$request, $name], $args);
-            if ($return instanceof ServerRequestInterface) {
-                static::$request = $return;
+            $callable = [static::$request, $name];
+
+            if (is_callable($callable)) {
+                $return = call_user_func_array($callable, $args);
+                if ($return instanceof ServerRequestInterface) {
+                    static::$request = $return;
+                }
+                return $return;
             }
-            return $return;
         }
 
         return null;

@@ -26,6 +26,14 @@
     }
   },
   "scripts": {
-    "test": "phpunit tests"
+    "test": "phpunit tests",
+    "qc": [
+      "phpstan analyse --memory-limit=512M",
+      "phpmd src text phpmd.xml"
+    ]
+  },
+  "require-dev": {
+    "phpmd/phpmd": "^2.15",
+    "phpstan/phpstan": "^1.10"
   }
 }

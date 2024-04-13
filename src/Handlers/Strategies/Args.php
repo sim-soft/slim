@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Simsoft\Slim\Handlers\Strategies;
 
+use Exception;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Simsoft\Slim\Request;
@@ -28,6 +29,7 @@ class Args implements InvocationStrategyInterface
      * as individual arguments.
      *
      * @param array<string, string> $routeArguments
+     * @throws Exception
      */
     public function __invoke(
         callable               $callable,
@@ -44,7 +46,11 @@ class Args implements InvocationStrategyInterface
 
         if ($value) {
             if (is_array($value)) {
-                Response::$response->getBody()->write(json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                $content = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                if ($content === false) {
+                    throw new Exception('Failed to json encode content.');
+                }
+                Response::$response->getBody()->write($content);
                 return Response::$response->withHeader('Content-Type', 'application/json');
 
             } elseif (is_string($value)) {

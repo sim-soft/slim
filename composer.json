@@ -11,7 +11,7 @@
   "type": "library",
   "require": {
     "php": ">=8.2",
-    "slim/psr7": "^1.6",
+    "slim/psr7": "^1.7",
     "slim/slim": "^4"
   },
   "license": "MIT",
@@ -26,7 +26,7 @@
     }
   },
   "scripts": {
-    "test": "phpunit tests",
+    "test": "phpunit --display-deprecations tests",
     "qc": [
       "phpstan analyse --memory-limit=512M",
       "phpmd src text phpmd.xml"
@@ -34,6 +34,6 @@
   },
   "require-dev": {
     "phpmd/phpmd": "^2.15",
-    "phpstan/phpstan": "^1.10"
+    "phpstan/phpstan": "^1.11"
   }
 }

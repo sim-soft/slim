@@ -8,12 +8,12 @@ use Simsoft\Slim\Route;
 use Simsoft\Slim\URL;
 
 Route::make()
-    ->withBasePath('/simsoft/slim/example/')
+    //->withBasePath('/simsoft/slim/example/')
     ->withErrorHandler(true, true, true, errorHandlerClass: MyErrorHandler::class)
     ->withMiddleware(require_once 'app/middleware.php')
     ->withRouting(
         routes: require_once 'app/routes.php',
-        cachePath: 'routes.cache'
+    //cachePath: 'routes.cache'
     )
     ->run();
 

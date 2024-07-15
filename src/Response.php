@@ -6,7 +6,6 @@ use DateTime;
 use DateTimeInterface;
 use DateTimeZone;
 use Exception;
-use JetBrains\PhpStorm\NoReturn;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 
@@ -140,14 +139,27 @@ class Response
     }
 
     /**
-     * Redirect to URL
+     * Redirect to URL.
      *
      * @param string $url Target redirect URL.
-     * @param int $code Status code. Default: 301
+     * @param int $code Status code. Default: 302
+     * @return $this
+     */
+    public function redirect(string $url, int $code = 302): static
+    {
+        $this->header('Location', $url)->status($code);
+        return $this;
+    }
+
+    /**
+     * Redirect to URL now.
+     *
+     * @param string $url Target redirect URL.
+     * @param int $code Status code. Default: 302
      * @param DateTime|null $cache Enable cache.
      * @return void
      */
-    #[NoReturn] public function redirect(string $url, int $code = 301, ?DateTime $cache = null): void
+    public function redirectNow(string $url, int $code = 302, ?DateTime $cache = null): void
     {
         if ($cache) {
             $cache->setTimeZone(new DateTimeZone('GMT'));

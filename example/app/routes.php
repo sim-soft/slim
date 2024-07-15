@@ -29,4 +29,10 @@ return function (App $app) {
 
     })->setName('redirect');
 
+    $app->get('/redirect-now', function () {
+
+        response()->redirectNow('https://www.google.com');
+
+    })->setName('redirect');
+
 };

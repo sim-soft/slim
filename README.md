@@ -343,7 +343,7 @@ class AppController
         response()->redirect('https://www.somedomain.com');   // normal usage.
         response()->redirect('/url-slug', 302);               // redirect with status code
         response()->redirect(request()->urlFor('route_name')) // use with slim route.
-        response()->redirectNow('https://www.url.com');       // Perform direct immediately.
+        response()->redirectNow('https://www.url.com');       // Perform redirect immediately.
     }
 }
 ```

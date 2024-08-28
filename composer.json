@@ -26,7 +26,7 @@
     }
   },
   "scripts": {
-    "test": "phpunit --display-deprecations tests",
+    "test": "phpunit --display-deprecations --display-warnings tests",
     "qc": [
       "phpstan analyse --memory-limit=512M",
       "phpmd src text phpmd.xml"

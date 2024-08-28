@@ -13,20 +13,51 @@ use Psr\Http\Message\ResponseInterface as Response;
  */
 class CORS
 {
+    /** @var string[] Allowed headers */
+    protected array $allows = [];
+
     /**
      * Constructor
      *
-     * @param string[] $config
+     * @param string $origins Origins. Separate multiple origins by commas. Default: '*'
+     * @param string $methods
      */
-    public function __construct(protected array $config = [])
+    public function __construct(string $origins = '*', string $methods = 'GET,POST,PUT,DELETE,PATCH,OPTIONS')
     {
-        $this->config = array_merge([
-            'Origin' => '*',
+        $this->allows = [
+            'Origin' => str_contains($origins, ',') ? $this->parseOrigins($origins) : $origins,
             'Headers' => 'X-Requested-With, Content-Type, Accept, Origin, Authorization',
-            'Methods' => 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+            'Methods' => strtoupper($methods),
             'Credentials' => 'false',
-        ], $this->config);
+        ];
+    }
 
+    /**
+     * Add additional access control allow header.
+     *
+     * @param string $header Header name.
+     * @param string $value Header value.
+     * @return $this
+     */
+    public function allow(string $header, string $value): static
+    {
+        $this->allows[ucfirst($header)] = $value;
+        return $this;
+    }
+
+    /**
+     * Get allowed origin.
+     *
+     * @param string $origins Origins separated by commas.
+     * @return string
+     */
+    public function parseOrigins(string $origins): string
+    {
+        $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? null;
+        if ($httpOrigin && in_array($httpOrigin, explode(',', str_replace(' ', '', $origins)))) {
+            return $httpOrigin;
+        }
+        return 'null';
     }
 
     /**
@@ -40,7 +71,7 @@ class CORS
     {
         $response = $handler->handle($request);
 
-        foreach ($this->config as $header => $value) {
+        foreach ($this->allows as $header => $value) {
             $response = $response->withHeader('Access-Control-Allow-' . $header, $value);
         }
 

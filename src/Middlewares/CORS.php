@@ -13,7 +13,8 @@ use Psr\Http\Message\ResponseInterface as Response;
  */
 class CORS
 {
-    protected array $config = [];
+    /** @var string[] Allowed headers */
+    protected array $allows = [];
 
     /**
      * Constructor
@@ -23,7 +24,7 @@ class CORS
      */
     public function __construct(string $origins = '*', string $methods = 'GET,POST,PUT,DELETE,PATCH,OPTIONS')
     {
-        $this->config = [
+        $this->allows = [
             'Origin' => str_contains($origins, ',') ? $this->parseOrigins($origins) : $origins,
             'Headers' => 'X-Requested-With, Content-Type, Accept, Origin, Authorization',
             'Methods' => strtoupper($methods),
@@ -40,23 +41,23 @@ class CORS
      */
     public function allow(string $header, string $value): static
     {
-        $this->config[ucfirst($header)] = $value;
+        $this->allows[ucfirst($header)] = $value;
         return $this;
     }
 
     /**
      * Get allowed origin.
      *
-     * @param string $origins
-     * @return string|null
+     * @param string $origins Origins separated by commas.
+     * @return string
      */
-    public function parseOrigins(string $origins): ?string
+    public function parseOrigins(string $origins): string
     {
-        $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? null;
+        $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? null;
         if ($httpOrigin && in_array($httpOrigin, explode(',', str_replace(' ', '', $origins)))) {
             return $httpOrigin;
         }
-        return null;
+        return 'null';
     }
 
     /**
@@ -70,7 +71,7 @@ class CORS
     {
         $response = $handler->handle($request);
 
-        foreach ($this->config as $header => $value) {
+        foreach ($this->allows as $header => $value) {
             $response = $response->withHeader('Access-Control-Allow-' . $header, $value);
         }
 

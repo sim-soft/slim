@@ -13,20 +13,50 @@ use Psr\Http\Message\ResponseInterface as Response;
  */
 class CORS
 {
+    protected array $config = [];
+
     /**
      * Constructor
      *
-     * @param string[] $config
+     * @param string $origins Origins. Separate multiple origins by commas. Default: '*'
+     * @param string $methods
      */
-    public function __construct(protected array $config = [])
+    public function __construct(string $origins = '*', string $methods = 'GET,POST,PUT,DELETE,PATCH,OPTIONS')
     {
-        $this->config = array_merge([
-            'Origin' => '*',
+        $this->config = [
+            'Origin' => str_contains($origins, ',') ? $this->parseOrigins($origins) : $origins,
             'Headers' => 'X-Requested-With, Content-Type, Accept, Origin, Authorization',
-            'Methods' => 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+            'Methods' => strtoupper($methods),
             'Credentials' => 'false',
-        ], $this->config);
+        ];
+    }
 
+    /**
+     * Add additional access control allow header.
+     *
+     * @param string $header Header name.
+     * @param string $value Header value.
+     * @return $this
+     */
+    public function allow(string $header, string $value): static
+    {
+        $this->config[ucfirst($header)] = $value;
+        return $this;
+    }
+
+    /**
+     * Get allowed origin.
+     *
+     * @param string $origins
+     * @return string|null
+     */
+    public function parseOrigins(string $origins): ?string
+    {
+        $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? null;
+        if ($httpOrigin && in_array($httpOrigin, explode(',', str_replace(' ', '', $origins)))) {
+            return $httpOrigin;
+        }
+        return null;
     }
 
     /**

@@ -8,6 +8,11 @@ use DateTimeZone;
 use Exception;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
+use Simsoft\Resource\Exceptions\InvalidStatusCodeException;
+use Simsoft\Resource\Resource;
+use Simsoft\Resource\ResourceCollection;
+use Simsoft\Resource\Serializers\JsonSerializer;
+use Simsoft\Resource\Serializers\ResourceSerializerInterface;
 
 /**
  * Response class
@@ -69,7 +74,7 @@ class Response
     }
 
     /**
-     * Set status code.
+     * Set the status code.
      *
      * @param int $code Status code.
      * @param string $reasonPhrase Reason phrase.
@@ -98,6 +103,49 @@ class Response
         }
 
         throw new Exception('Failed to convert response to JSON');
+    }
+
+    /**
+     * Set resource response content.
+     *
+     * Serializes a Resource or ResourceCollection using the provided serializer
+     * (defaults to JSON), applies resource-level headers, writes the body,
+     * and sets the Content-Type header and HTTP status code.
+     *
+     * @param Resource|ResourceCollection $resource The resource to serialize.
+     * @param int $code HTTP status code (100-599). Default: 200.
+     * @param ResourceSerializerInterface|null $serializer Custom serializer or null for JSON.
+     *
+     * @return static The current Response instance for fluent chaining.
+     *
+     * @throws InvalidStatusCodeException When the status code is outside 100-599.
+     */
+    public function resource(
+        Resource|ResourceCollection  $resource,
+        int                          $code = 200,
+        ?ResourceSerializerInterface $serializer = null
+    ): static
+    {
+        if ($code < 100 || $code > 599) {
+            throw new InvalidStatusCodeException('Invalid HTTP status code: ' . $code);
+        }
+
+        $serializer ??= new JsonSerializer();
+        $body = $serializer->serialize($resource);
+        $contentType = $serializer->contentType();
+
+        // Apply resource-level headers
+        $headers = $resource->getHeaders();
+        foreach ($headers as $name => $value) {
+            static::$response = static::$response->withHeader($name, $value);
+        }
+
+        static::$response->getBody()->write($body);
+        static::$response = static::$response
+            ->withHeader('Content-Type', $contentType)
+            ->withStatus($code);
+
+        return $this;
     }
 
     /**
@@ -154,12 +202,17 @@ class Response
     /**
      * Redirect to URL now.
      *
+     * Sends redirect headers and terminates the script immediately.
+     * Note: This bypasses Slim's response pipeline. Use response()->redirect() when possible.
+     *
      * @param string $url Target redirect URL.
      * @param int $code Status code. Default: 302
      * @param DateTime|null $cache Enable cache.
-     * @return void
+     * @return never
+     *
+     * @SuppressWarnings(PHPMD.ExitExpression)
      */
-    public function redirectNow(string $url, int $code = 302, ?DateTime $cache = null): void
+    public function redirectNow(string $url, int $code = 302, ?DateTime $cache = null): never
     {
         if ($cache) {
             $cache->setTimeZone(new DateTimeZone('GMT'));
@@ -197,7 +250,7 @@ class Response
 
 if (!function_exists('response')) {
     /**
-     * Add flash message for next request.
+     * Add a flash message for the next request.
      *
      * @param string|string[]|null $content Response content.
      * @param int|null $code Status code.

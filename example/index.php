@@ -17,7 +17,6 @@ Route::make()
     )
     ->run();
 
-
 var_dump(
     URL::for('version'),
     URL::for('display-name', ['name' => 'william']),

@@ -2,10 +2,13 @@
 
 use Slim\App;
 use function Simsoft\Slim\response;
+use function Simsoft\Slim\request;
 
 return function (App $app) {
 
-    $app->get('', function () {
+    $app->get('/', function () {
+
+        request()->getQueryParams();
 
         response('Hello World!');
 

@@ -10,7 +10,7 @@
         <properties>
             <property name="ignorepattern"
                       description="Ignore methods matching this regex. Example: /^(__construct|get.*Filtered)$/"
-                      value="/^(withErrorHandler)$/"/>
+                      value="/^(withErrorHandler|__construct|setParams)$/"/>
         </properties>
     </rule>
     <rule ref="rulesets/cleancode.xml/ElseExpression"/>

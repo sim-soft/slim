@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Simsoft\Slim\Middlewares;
 
 use Psr\Http\Message\ResponseInterface as Response;

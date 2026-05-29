@@ -2,3 +2,6 @@ parameters:
     level: 8
     paths:
         - src
+    ignoreErrors:
+        - message: '#Property Simsoft\\Slim\\Route::\$app with generic class Slim\\App does not specify its types#'
+          path: src/Route.php

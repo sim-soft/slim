@@ -30,7 +30,7 @@ class URL
     }
 
     /**
-     * Set primary domain name.
+     * Set a primary domain name.
      *
      * @param string|null $domain Domain name.
      * @return void
@@ -52,14 +52,14 @@ class URL
     }
 
     /**
-     * Get domain name.
+     * Get a domain name.
      *
      * @return string|null
      */
     public static function getDomain(): ?string
     {
         if (static::$domain === null) {
-            static::$domain = (static::server('HTTPS') ? 'http' : 'https')
+            static::$domain = (static::server('HTTPS') ? 'https' : 'http')
                 . "://" . static::server('HTTP_HOST') . static::server('REQUEST_URI');
         }
         return static::$domain;

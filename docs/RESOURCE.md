@@ -1,6 +1,19 @@
 # API Resources
 
-Framework-independent data transformation layer for structured API responses.
+## Table of Contents
+
+- [Basic Usage](#basic-usage)
+- [Collections](#collections)
+- [Declarative Mapping](#declarative-mapping)
+- [Envelope Configuration](#envelope-configuration)
+- [Metadata & Links](#metadata-amp-links)
+- [Conditional Fields](#conditional-fields)
+- [Field Filtering](#field-filtering)
+- [Nested Resources](#nested-resources)
+- [Lifecycle Hooks](#lifecycle-hooks)
+- [Custom Headers](#custom-headers)
+- [Serializers](#serializers)
+- [Full Controller Example](#full-controller-example)
 
 ## Basic Usage
 

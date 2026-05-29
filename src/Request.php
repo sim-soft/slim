@@ -251,6 +251,31 @@ class Request
         return static::$request->getHeaderLine($name) ?: $default;
     }
 
+    /** @var callable|null Global sanitizer applied to query() and input() values. */
+    protected static $sanitizer = null;
+
+    /**
+     * Set a global sanitizer for query() and input() values.
+     * Set null to disable.
+     *
+     * @param callable|null $sanitizer fn(mixed $value, string $key): mixed
+     * @return void
+     */
+    public static function setSanitizer(?callable $sanitizer): void
+    {
+        static::$sanitizer = $sanitizer;
+    }
+
+    /**
+     * Get the current global sanitizer.
+     *
+     * @return callable|null
+     */
+    public static function getSanitizer(): ?callable
+    {
+        return static::$sanitizer;
+    }
+
     /**
      * Get bearer token.
      *
@@ -263,6 +288,114 @@ class Request
             [, $value] = explode(' ', $value);
         }
         return $value;
+    }
+
+    /**
+     * Get query parameters (GET data).
+     *
+     * - `query()` — returns all query params
+     * - `query('key')` — returns a single param value (or null)
+     * - `query(['key1', 'key2'])` — returns only the specified params
+     *
+     * Values are automatically sanitized using the global sanitizer (if set via setSanitizer()).
+     *
+     * @param string|string[]|null $key Key name, array of key names, or null for all.
+     * @param mixed $default Default value when key is not found.
+     * @return mixed
+     */
+    public function query(string|array|null $key = null, mixed $default = null): mixed
+    {
+        return $this->extractData(static::$request->getQueryParams(), $key, $default);
+    }
+
+    /**
+     * Get parsed body parameters (POST/PUT/JSON data).
+     *
+     * - `input()` — returns all body params
+     * - `input('key')` — returns a single param value (or null)
+     * - `input(['key1', 'key2'])` — returns only the specified params
+     *
+     * Values are automatically sanitized using the global sanitizer (if set via setSanitizer()).
+     *
+     * @param string|string[]|null $key Key name, array of key names, or null for all.
+     * @param mixed $default Default value when key is not found.
+     * @return mixed
+     */
+    public function input(string|array|null $key = null, mixed $default = null): mixed
+    {
+        $body = static::$request->getParsedBody();
+        $data = is_array($body) ? $body : (array)$body;
+        return $this->extractData($data, $key, $default);
+    }
+
+    /**
+     * Get uploaded files.
+     *
+     * - `files()` — returns all uploaded files
+     * - `files('key')` — returns a single file (or null)
+     * - `files(['key1', 'key2'])` — returns only the specified files
+     *
+     * @param string|string[]|null $key Key name, array of key names, or null for all.
+     * @return mixed
+     */
+    public function files(string|array|null $key = null): mixed
+    {
+        $files = static::$request->getUploadedFiles();
+
+        if ($key === null) {
+            return $files;
+        }
+
+        if (is_string($key)) {
+            return $files[$key] ?? null;
+        }
+
+        $result = [];
+        foreach ($key as $name) {
+            if (array_key_exists($name, $files)) {
+                $result[$name] = $files[$name];
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Extract data from an array with optional key filtering and sanitization.
+     *
+     * @param array<string, mixed> $data Source data array.
+     * @param string|string[]|null $key Key name, array of key names, or null for all.
+     * @param mixed $default Default value when key is not found.
+     * @return mixed
+     */
+    protected function extractData(array $data, string|array|null $key, mixed $default): mixed
+    {
+        $sanitizer = static::$sanitizer;
+
+        // Return all data
+        if ($key === null) {
+            if ($sanitizer === null) {
+                return $data;
+            }
+            $result = [];
+            foreach ($data as $name => $value) {
+                $result[$name] = $sanitizer($value, $name);
+            }
+            return $result;
+        }
+
+        // Single key
+        if (is_string($key)) {
+            $value = array_key_exists($key, $data) ? $data[$key] : $default;
+            return $sanitizer ? $sanitizer($value, $key) : $value;
+        }
+
+        // Array of keys
+        $result = [];
+        foreach ($key as $name) {
+            $value = array_key_exists($name, $data) ? $data[$name] : $default;
+            $result[$name] = $sanitizer ? $sanitizer($value, $name) : $value;
+        }
+        return $result;
     }
 
 

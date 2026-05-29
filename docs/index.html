@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO -->
+    <title>Simsoft Slim - Fluent Routing Wrapper for Slim Framework 4 | PHP</title>
+    <meta name="description"
+          content="Simsoft Slim is a PHP library providing a fluent routing wrapper for Slim Framework 4 with simplified request/response helpers, authentication, CORS, rate limiting, CSRF middleware, API resources, and DataTable support.">
+    <meta name="keywords"
+          content="slim framework, php routing, slim4, php middleware, cors, rate limiting, csrf, authentication, api resource, psr-7, psr-15, php library, rest api, slim wrapper">
+    <meta name="author" content="V.Zang, Loo">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://sim-soft.github.io/slim/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://sim-soft.github.io/slim/">
+    <meta property="og:title" content="Simsoft Slim - Fluent Routing Wrapper for Slim Framework 4">
+    <meta property="og:description"
+          content="A PHP library providing fluent routing, middleware (Auth, CORS, RateLimit, CSRF), API resources, and DataTable support for Slim Framework 4.">
+    <meta property="og:image" content="https://sim-soft.github.io/slim/img/logo/simsoft.webp">
+    <meta property="og:site_name" content="Simsoft Slim Documentation">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Simsoft Slim - Fluent Routing Wrapper for Slim Framework 4">
+    <meta name="twitter:description"
+          content="A PHP library providing fluent routing, middleware (Auth, CORS, RateLimit, CSRF), API resources, and DataTable support for Slim Framework 4.">
+    <meta name="twitter:image" content="https://sim-soft.github.io/slim/img/logo/simsoft.webp">
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "SoftwareSourceCode",
+            "name": "Simsoft Slim",
+            "description": "A fluent routing wrapper for Slim Framework 4 with simplified request/response helpers, built-in middlewares, API resources, and DataTable support.",
+            "url": "https://sim-soft.github.io/slim/",
+            "codeRepository": "https://github.com/sim-soft/slim",
+            "programmingLanguage": {
+                "@type": "ComputerLanguage",
+                "name": "PHP"
+            },
+            "runtimePlatform": "PHP 8.2+",
+            "license": "https://opensource.org/licenses/MIT",
+            "author": {
+                "@type": "Person",
+                "name": "V.Zang, Loo"
+            },
+            "keywords": [
+                "slim framework",
+                "php",
+                "routing",
+                "middleware",
+                "psr-7",
+                "api",
+                "cors",
+                "authentication"
+            ]
+        }
+    </script>
+
+    <!-- Geo Tags -->
+    <meta name="geo.region" content="MY">
+    <meta name="geo.placename" content="Malaysia">
+
+    <!-- docsify-darklight-theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/style.min.css"
+          title="docsify-darklight-theme" type="text/css">
+    <link rel="icon" href="img/logo/simsoft.webp" type="image/webp">
+    <style>
+        .logo-text {
+            color: inherit !important;
+        }
+    </style>
+</head>
+<body>
+<div id="app">Loading...</div>
+
+<script>
+    window.$docsify = {
+        name: 'Simsoft Slim',
+        nameLink: 'https://sim-soft.github.io/slim/',
+        repo: 'https://github.com/sim-soft/slim',
+        loadSidebar: true,
+        subMaxLevel: 3,
+        auto2top: true,
+        search: {
+            placeholder: 'Search documentation',
+            noData: 'No results found',
+            depth: 3,
+        },
+        darklightTheme: {
+            defaultTheme: 'light',
+            siteFont: 'Source Sans Pro, Helvetica Neue, Arial, sans-serif',
+            codeFontFamily: 'JetBrains Mono, Roboto Mono, Monaco, courier, monospace',
+            dark: {
+                accent: '#E8960C',
+                toogleBackground: '#1a1a2e',
+                background: '#1a1a2e',
+                textColor: '#e0e0e0',
+                codeBackgroundColor: '#0d1117',
+            },
+            light: {
+                accent: '#C47A08',
+                toogleBackground: '#fff',
+                background: '#fff',
+                textColor: '#1a1a1a',
+                codeBackgroundColor: '#f6f8fa',
+            },
+        },
+    };
+</script>
+
+<!-- Docsify -->
+<script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+
+<!-- Plugins -->
+<script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2/dist/docsify-copy-code.min.js"></script>
+
+<!-- Syntax highlighting -->
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-php.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-xml-doc.min.js"></script>
+
+<!-- Darklight theme -->
+<script src="https://cdn.jsdelivr.net/npm/docsify-darklight-theme@latest/dist/index.min.js"
+        type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2/dist/docsify-copy-code.min.js"></script>
+<!-- Title prefix plugin -->
+<script>
+    window.$docsify.plugins = (window.$docsify.plugins || []).concat(function (hook) {
+        hook.doneEach(function () {
+            var title = document.querySelector('.markdown-section h1');
+            document.title = 'Simsoft Slim' + (title ? ' - ' + title.textContent : '');
+        });
+    });
+</script>
+</body>
+</html>

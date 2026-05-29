@@ -1,5 +1,25 @@
 # Request & Response
 
+## Table of Contents
+
+- [Request](#request)
+    - [Request Data](#request-data)
+    - [Sanitizers](#sanitizers)
+    - [Request Inspection](#request-inspection)
+    - [Request Attributes](#request-attributes)
+    - [Route Information](#route-information)
+    - [URL Generation](#url-generation)
+    - [HTTP Exceptions](#http-exceptions)
+- [Response](#response)
+    - [Text](#text)
+    - [JSON](#json)
+    - [XML](#xml)
+    - [Headers](#headers)
+    - [Redirect](#redirect)
+    - [Resource Response](#resource-response)
+    - [Return Values in Controllers](#return-values-in-controllers)
+- [URL Helper](#url-helper)
+
 ## Request
 
 Access via the `request()` helper function.
@@ -10,10 +30,80 @@ use function Simsoft\Slim\request;
 
 ### Request Data
 
+Shorthand methods for accessing query params, body params, and uploaded files:
+
 ```php
-request()->getQueryParams();    // $_GET
-request()->getParsedBody();     // $_POST
-request()->getUploadedFiles();  // UploadedFileInterface[]
+// Get all params
+request()->query();              // All query string params ($_GET)
+request()->input();              // All parsed body params (POST, JSON, etc.)
+request()->files();              // All uploaded files
+
+// Get a single value
+request()->query('page');        // Value of ?page=... (or null if missing)
+request()->input('email');       // Value of 'email' from request body
+request()->files('avatar');      // Single uploaded file
+
+// Get multiple values
+request()->query(['page', 'limit']);    // ['page' => '2', 'limit' => '10']
+request()->input(['name', 'email']);    // ['name' => 'John', 'email' => '...']
+request()->files(['avatar', 'resume']); // Two specific files
+
+// Default value (returned when key doesn't exist)
+request()->query('page', '1');          // Returns '1' if ?page is not set
+request()->input('role', 'user');       // Returns 'user' if not in body
+```
+
+The original PSR-7 methods still work:
+
+```php
+request()->getQueryParams();    // Same as query() with no arguments
+request()->getParsedBody();     // Same as input() with no arguments
+request()->getUploadedFiles();  // Same as files() with no arguments
+```
+
+### Sanitizers
+
+Set a global sanitizer once — it automatically applies to all `query()` and
+`input()` calls:
+
+```php
+// Set once at app startup (e.g., in index.php or a middleware)
+use Simsoft\Slim\Request;
+
+Request::setSanitizer(function(mixed $value, string $key): mixed {
+    if (is_string($value)) {
+        return htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8');
+    }
+    return $value;
+});
+
+// Now every query() and input() call is automatically sanitized
+request()->query('search');           // Already trimmed and escaped
+request()->input('name');             // Already trimmed and escaped
+request()->input(['name', 'email']); // Both values sanitized
+```
+
+The sanitizer receives two arguments: the value and the key name, so you can
+apply different logic per field if needed:
+
+```php
+Request::setSanitizer(function(mixed $value, string $key): mixed {
+    if (!is_string($value)) {
+        return $value;
+    }
+
+    return match($key) {
+        'email' => filter_var(trim($value), FILTER_SANITIZE_EMAIL),
+        'page', 'limit', 'id' => (int)$value,
+        default => htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8'),
+    };
+});
+```
+
+To disable the sanitizer:
+
+```php
+Request::setSanitizer(null);
 ```
 
 ### Request Inspection

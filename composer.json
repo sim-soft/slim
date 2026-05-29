@@ -11,6 +11,10 @@
     "psr-7",
     "psr-15",
     "cors",
+    "csrf",
+    "rate-limit",
+    "quota",
+    "authentication",
     "error-handler",
     "api-resource",
     "datatable",
@@ -27,10 +31,10 @@
       "role": "Developer"
     }
   ],
-  "homepage": "https://github.com/simsoft/slim",
+  "homepage": "https://github.com/sim-soft/slim",
   "support": {
-    "issues": "https://github.com/simsoft/slim/issues",
-    "source": "https://github.com/simsoft/slim"
+    "issues": "https://github.com/sim-soft/slim/issues",
+    "source": "https://github.com/sim-soft/slim"
   },
   "require": {
     "php": ">=8.2",

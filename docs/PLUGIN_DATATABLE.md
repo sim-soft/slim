@@ -1,5 +1,18 @@
 # Plugin: DataTable
 
+## Table of Contents
+
+- [Classes](#classes)
+- [DataTableResponse](#datatableresponse)
+    - [Setup](#setup)
+    - [Sorting Behavior](#sorting-behavior)
+    - [Building the Response](#building-the-response)
+    - [Output](#output)
+    - [Response Structure](#response-structure)
+- [DataTableActionButton](#datatableactionbutton)
+    - [Row with Actions](#row-with-actions)
+- [Full Controller Example](#full-controller-example)
+
 Server-side response builder for [jQuery DataTables](https://datatables.net/).
 
 ## Classes

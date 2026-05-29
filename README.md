@@ -188,6 +188,8 @@ Full reference: [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)
 
 - [DataTable Plugin](docs/PLUGIN_DATATABLE.md) — Server-side response builder
   for jQuery DataTables
+- [API Resources](docs/RESOURCE.md) — Data transformation layer for structured
+  API responses
 
 ## Documentation
 
@@ -195,6 +197,7 @@ Full reference: [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)
 |------------------------------------------------------------|------------------------------------------------------|
 | Middleware (Auth, CORS, CacheOff, RateLimit, CSRF, Custom) | [docs/MIDDLEWARE.md](docs/MIDDLEWARE.md)             |
 | Request & Response                                         | [docs/REQUEST_RESPONSE.md](docs/REQUEST_RESPONSE.md) |
+| API Resources                                              | [docs/RESOURCE.md](docs/RESOURCE.md)                 |
 | Error Handling                                             | [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)     |
 | DataTable Plugin                                           | [docs/PLUGIN_DATATABLE.md](docs/PLUGIN_DATATABLE.md) |
 

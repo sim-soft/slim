@@ -1,6 +1,6 @@
 {
   "name": "simsoft/slim",
-  "description": "A fluent routing wrapper for Slim Framework 4 with simplified request/response helpers, CORS middleware, error handling, and DataTable support",
+  "description": "A fluent routing wrapper for Slim Framework 4 with simplified request/response helpers, middleware, error handling, API resources, and DataTable support",
   "keywords": [
     "slim",
     "slim4",
@@ -12,6 +12,7 @@
     "psr-15",
     "cors",
     "error-handler",
+    "api-resource",
     "datatable",
     "rest",
     "api",

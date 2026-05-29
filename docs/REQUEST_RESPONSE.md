@@ -119,6 +119,37 @@ response()->redirectNow('https://example.com');
 response()->redirectNow('https://example.com', 301, new \DateTime('+1 hour'));
 ```
 
+### Resource Response
+
+Serialize API resources (see [docs/RESOURCE.md](RESOURCE.md) for full
+reference):
+
+```php
+use Simsoft\Resource\Resource;
+
+class UserResource extends Resource
+{
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->resource->id,
+            'name' => $this->resource->name,
+        ];
+    }
+}
+
+// Single resource
+response()->resource(UserResource::make($user));
+
+// Collection with pagination
+response()->resource(
+    UserResource::collection($users)->paginate(total: 100, perPage: 10, currentPage: 1, lastPage: 10)
+);
+
+// With custom status code
+response()->resource(UserResource::make($user), 201);
+```
+
 ### Return Values in Controllers
 
 ```php

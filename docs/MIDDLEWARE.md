@@ -306,14 +306,15 @@ $auth = new Auth($authenticator, attribute: 'currentUser');
 **Bearer Token (API):**
 
 ```php
-$auth = new Auth(function ($request) {
+$tokenService = $container->get('tokenService');
+
+$auth = new Auth(function ($request) use ($tokenService) {
     $header = $request->getHeaderLine('Authorization');
     if (!str_starts_with($header, 'Bearer ')) {
         return null;
     }
     $token = substr($header, 7);
-    $user = $this->tokenService->validate($token);
-    return $user; // ['id' => ..., 'roles' => [...], 'permissions' => [...]]
+    return $tokenService->validate($token); // ['id' => ..., 'roles' => [...], 'permissions' => [...]]
 });
 ```
 
@@ -328,14 +329,16 @@ $auth = new Auth(function ($request) {
 **Basic Auth:**
 
 ```php
-$auth = new Auth(function ($request) {
+$userService = $container->get('userService');
+
+$auth = new Auth(function ($request) use ($userService) {
     $header = $request->getHeaderLine('Authorization');
     if (!str_starts_with($header, 'Basic ')) {
         return null;
     }
     $decoded = base64_decode(substr($header, 6));
     [$username, $password] = explode(':', $decoded, 2);
-    return $this->userService->verify($username, $password);
+    return $userService->verify($username, $password);
 });
 ```
 

@@ -15,7 +15,7 @@ is called.
 ```php
 use Simsoft\Slim\URL;
 
-// Relative URL (includes base path)
+// Relative URL (includes a base path)
 URL::for('home');
 // /
 
@@ -55,7 +55,7 @@ request()->urlFor('users.show', ['id' => '42']);
 request()->urlFor('search', queryParams: ['q' => 'php']);
 // /search?q=php
 
-// Without base path
+// Without a base path
 request()->relativeUrlFor('users.show', ['id' => '42']);
 // /users/42
 

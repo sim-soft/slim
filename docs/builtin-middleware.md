@@ -69,13 +69,13 @@ $auth = new Auth(function ($request) {
 $app->add($auth);
 ```
 
-### With Role Requirements (OR logic — user needs at least one)
+### With Role Requirements (OR logic — a user needs at least one)
 
 Roles use **OR logic**: the user passes if they have *any one* of the listed
 roles.
 
 ```php
-// User with role "admin" OR "moderator" can access
+// User with a role "admin" OR "moderator" can access
 $auth = new Auth($authenticator, roles: ['admin', 'moderator']);
 ```
 
@@ -450,10 +450,10 @@ class MemcachedStorage implements RateLimitStorageInterface
 Response headers:
 
 - `X-RateLimit-Limit` — max requests allowed
-- `X-RateLimit-Remaining` — requests remaining in window
-- `X-RateLimit-Reset` — Unix timestamp when window resets
+- `X-RateLimit-Remaining` — requests remaining in a window
+- `X-RateLimit-Reset` — Unix timestamp when a window resets
 
-Throws HTTP 429 when limit is exceeded.
+Throws HTTP 429 when the limit is exceeded.
 
 ---
 
@@ -540,7 +540,7 @@ $app->add(new Quota(
 | `X-Quota-Remaining` | Requests remaining in period     |
 | `X-Quota-Reset`     | Unix timestamp when quota resets |
 
-Throws HTTP 429 when quota is exceeded.
+Throws HTTP 429 when the quota is exceeded.
 
 ### RateLimit vs Quota
 
@@ -561,7 +561,7 @@ users into submitting forms on your site from a malicious page. It works by
 generating a unique token for each form — when the form is submitted, the token
 must match or the request is rejected (HTTP 403).
 
-This middleware uses a **token pool** so multiple forms/tabs can be open
+This middleware uses a **token pool** so multiple forms/tabs can be opened
 simultaneously without conflicts.
 
 ```php
@@ -748,7 +748,7 @@ The header is only added when:
 - The response doesn't already have a `Content-Length` header
 
 > **Tip:** Add this as the outermost middleware so it calculates the final body
-> size after all other middleware have modified the response.
+> size after all other middleware has modified the response.
 
 
 ---
@@ -807,7 +807,7 @@ $app->add(new MethodOverride(
 
 - Only applies to POST requests (GET requests are never overridden)
 - Only allows override to PUT, PATCH, or DELETE
-- Header takes priority over body field
+- Header takes priority over the body field
 - Invalid or unsupported methods are ignored (request stays as POST)
 
 ---
@@ -879,7 +879,7 @@ use Simsoft\Slim\Middlewares\MaintenanceMode;
 // Enable maintenance mode
 $app->add(new MaintenanceMode(enabled: true));
 
-// With custom message
+// With a custom message
 $app->add(new MaintenanceMode(
     enabled: true,
     message: 'We are upgrading. Back in 30 minutes.',
@@ -911,7 +911,7 @@ $app->add(new MaintenanceMode(
 
 ## IpFilter
 
-Restricts access based on client IP address. Works in two modes:
+Restricts access based on the client IP address. Works in two modes:
 
 - **Whitelist** (default): Only listed IPs can access. Everyone else gets
   blocked.

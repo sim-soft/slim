@@ -1,7 +1,8 @@
 # Error Handling
 
 Simsoft Slim catches all uncaught exceptions and PHP fatal errors, then renders
-an appropriate error response based on the content type. In development it shows
+an appropriate error response based on the content type. In development, it
+shows
 details; in production it shows a clean error page.
 
 ## Table of Contents
@@ -51,7 +52,7 @@ use function Simsoft\Slim\request;
 
 // In a controller or route handler:
 request()->notFound();                          // 404 Not Found
-request()->notFound('User not found');          // 404 with custom message
+request()->notFound('User not found');          // 404 with a custom message
 request()->allowedMethods(['POST', 'PUT']);      // 405 Method Not Allowed
 ```
 

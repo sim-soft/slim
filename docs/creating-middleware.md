@@ -15,7 +15,7 @@ the way out.
 
 ## Invokable Class
 
-A middleware is a PHP class with an `__invoke()` method. It receives the request
+Middleware is a PHP class with an `__invoke()` method. It receives the request
 and a handler (the next layer), and must return a response:
 
 ```php
@@ -116,7 +116,7 @@ Route::make()
 
 ## Route-Specific Middleware
 
-You can attach middleware to individual routes or groups so it only runs for
+You can attach middleware to individual routes or groups, so it only runs for
 those URLs:
 
 **Per-route** — only the `/admin` route requires authentication:

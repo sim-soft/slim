@@ -40,7 +40,7 @@ request()->files();              // All uploaded files
 
 // Get a single value
 request()->query('page');        // Value of ?page=... (or null if missing)
-request()->input('email');       // Value of 'email' from request body
+request()->input('email');       // Value of 'email' from the request body
 request()->files('avatar');      // Single uploaded file
 
 // Get multiple values
@@ -48,7 +48,7 @@ request()->query(['page', 'limit']);    // ['page' => '2', 'limit' => '10']
 request()->input(['name', 'email']);    // ['name' => 'John', 'email' => '...']
 request()->files(['avatar', 'resume']); // Two specific files
 
-// Default value (returned when key doesn't exist)
+// Default value (returned when the key doesn't exist)
 request()->query('page', '1');          // Returns '1' if ?page is not set
 request()->input('role', 'user');       // Returns 'user' if not in body
 ```
@@ -67,7 +67,7 @@ Set a global sanitizer once — it automatically applies to all `query()` and
 `input()` calls:
 
 ```php
-// Set once at app startup (e.g., in index.php or a middleware)
+// Set once at app startup (e.g., in index.php or middleware)
 use Simsoft\Slim\Request;
 
 Request::setSanitizer(function(mixed $value, string $key): mixed {
@@ -236,7 +236,7 @@ response()->resource(
     UserResource::collection($users)->paginate(total: 100, perPage: 10, currentPage: 1, lastPage: 10)
 );
 
-// With custom status code
+// With a custom status code
 response()->resource(UserResource::make($user), 201);
 ```
 

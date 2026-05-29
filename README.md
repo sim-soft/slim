@@ -50,7 +50,7 @@ Route::make()
 ```
 
 Visit `http://localhost/` to see "Hello World!" or `http://localhost/john` to
-see "Hello john!".
+see "Hello John!"
 
 ## Route Builder API
 
@@ -66,7 +66,7 @@ Route::make($container)                      // Optional PSR-11 dependency injec
         routes: function(App $app) { },      // Define your routes here
         cachePath: '/path/to/routes.cache',  // Optional: cache routes for production
     )
-    ->run();                                 // Process the request and send response
+    ->run();                                 // Process the request and send a response
 ```
 
 ## Controllers
@@ -144,14 +144,14 @@ request()->isMethod('post');           // Check HTTP method
 request()->isXHR();                    // Detect AJAX requests
 request()->getBearerToken();           // Extract "Bearer xxx" token
 request()->urlFor('users.show', ['id' => '1']); // Generate URL from route name
-request()->notFound();                 // Throw 404 exception
+request()->notFound();                 // Throw exception 404
 
 // Sending responses
 response('Hello World');               // Plain text
 response(['status' => 'ok']);          // JSON (arrays auto-encode)
 response('Error', 500);               // Text with status code
 response()->json($data);              // Explicit JSON
-response()->xml($xmlString);          // XML with correct content-type
+response()->xml($xmlString);          // XML with the correct content-type
 response()->redirect('/path', 301);   // Redirect
 response()->header('X-Custom', 'val'); // Set response header
 ```

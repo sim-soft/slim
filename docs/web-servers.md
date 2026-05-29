@@ -82,8 +82,8 @@ server {
 
 ## Laragon
 
-Laragon auto-configures Apache with pretty URLs. No `.htaccess` changes needed.
-Just create your project in `C:\laragon\www\your-project\` and access it at
+Laragon autoconfigures Apache with pretty URLs. No `.htaccess` changes needed.
+Create your project in `C:\laragon\www\your-project\` and access it at
 `http://your-project.test`.
 
 If using a `public/` subdirectory, set the document root in Laragon's Apache

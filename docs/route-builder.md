@@ -107,7 +107,7 @@ your own.
 
 ## Route Caching
 
-In production, caching routes improves performance by skipping route parsing on
+In production, caching routes improve performance by skipping route parsing on
 every request:
 
 ```php

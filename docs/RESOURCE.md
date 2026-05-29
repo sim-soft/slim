@@ -203,7 +203,7 @@ response()->resource(
 
 ## Serializers
 
-Default is JSON. XML serializer included:
+The default is JSON. XML serializer included:
 
 ```php
 use Simsoft\Resource\Serializers\XmlSerializer;

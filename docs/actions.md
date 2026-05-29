@@ -16,7 +16,7 @@ the [official Slim 4 skeleton](https://github.com/slimphp/Slim-Skeleton).
 ## Basic Action
 
 An action class only needs an `__invoke()` method. Route parameters are passed
-as arguments (same as closures and controller methods):
+as arguments (the same as closures and controller methods):
 
 ```php
 <?php
@@ -44,7 +44,7 @@ class ShowUserAction
 {
     public function __invoke(string $id)
     {
-        // Route parameter {id} is passed as argument
+        // Route parameter {id} is passed as an argument
         response(['id' => $id, 'name' => 'John']);
     }
 }
@@ -78,7 +78,7 @@ Route::make()
 
 When you pass a container to `Route::make($container)`, Slim automatically
 resolves the action's constructor dependencies from the container. This means
-you can type-hint services in the constructor and they'll be injected for you:
+you can type-hint services in the constructor, and they'll be injected for you:
 
 ```php
 <?php
@@ -150,7 +150,7 @@ class DeleteUserAction
 }
 ```
 
-## When to Use Actions vs Controllers
+## When to Use Actions vs. Controllers
 
 | Pattern                     | Best for                                                                                          |
 |-----------------------------|---------------------------------------------------------------------------------------------------|

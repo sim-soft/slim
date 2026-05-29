@@ -45,6 +45,8 @@ use Slim\Routing\RouteContext;
  * @method ServerRequestInterface withoutAttribute(string $name)
  * @method array|null|object getParsedBody()
  * @method ServerRequestInterface withParsedBody(array|null|object $data)
+ *
+ * @SuppressWarnings(PHPMD.TooManyPublicMethods)
  */
 class Request
 {

@@ -897,7 +897,7 @@ class EmployeeResource extends Resource
 {
     public function toArray(): array
     {
-        $isManager = $this->context['role'] ?? '' === 'manager';
+        $isManager = ($this->context['role'] ?? '') === 'manager';
 
         return [
             'id' => $this->resource->id,

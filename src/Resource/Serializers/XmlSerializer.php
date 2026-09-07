@@ -21,6 +21,19 @@ use Simsoft\Resource\ResourceCollection;
 class XmlSerializer implements ResourceSerializerInterface
 {
     /**
+     * Matches a valid XML 1.0 element name (the `Name` production, restricted
+     * to the common ASCII/Unicode-letter subset and excluding the reserved
+     * `xml` prefix).
+     *
+     * Keys that do not match cannot be used as element names and are emitted
+     * as `<item name="...">` instead.
+     */
+    private const VALID_NAME = '/^(?!(?i:xml))[A-Za-z_][A-Za-z0-9._-]*$/';
+
+    /** @var string Element name used for keys that are not valid XML names. */
+    private const FALLBACK_ELEMENT = 'item';
+
+    /**
      * Serialize a Resource or ResourceCollection to XML.
      *
      * @param Resource|ResourceCollection $resource The resource to serialize.
@@ -93,22 +106,47 @@ class XmlSerializer implements ResourceSerializerInterface
      */
     private function addValue(string $name, mixed $value, \SimpleXMLElement $xml): void
     {
-        if ($value === null) {
-            $xml->addChild($name);
-            return;
+        // Keys are frequently derived from database columns or user input and
+        // are not guaranteed to be legal XML names. Fall back to
+        // <item name="original key"> rather than emitting malformed XML.
+        $originalName = $name;
+        $isValidName = \preg_match(self::VALID_NAME, $name) === 1;
+
+        if (!$isValidName) {
+            $name = self::FALLBACK_ELEMENT;
         }
 
+        $child = $xml->addChild($name, $this->scalarToString($value));
+
         if (\is_array($value)) {
-            $child = $xml->addChild($name);
             $this->arrayToXml($value, $child);
-            return;
+        }
+
+        if (!$isValidName && $child !== null) {
+            $child->addAttribute('name', $originalName);
+        }
+    }
+
+    /**
+     * Convert a value to its XML text content.
+     *
+     * Nulls and arrays carry no text of their own: nulls produce an empty
+     * element and arrays are populated from their children by the caller.
+     *
+     * @param mixed $value The value to convert.
+     *
+     * @return string|null The escaped text content, or null for no content.
+     */
+    private function scalarToString(mixed $value): ?string
+    {
+        if ($value === null || \is_array($value)) {
+            return null;
         }
 
         if (\is_bool($value)) {
-            $xml->addChild($name, $value ? 'true' : 'false');
-            return;
+            return $value ? 'true' : 'false';
         }
 
-        $xml->addChild($name, htmlspecialchars((string)$value, ENT_XML1, 'UTF-8'));
+        return htmlspecialchars((string)$value, ENT_XML1, 'UTF-8');
     }
 }

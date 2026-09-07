@@ -176,6 +176,12 @@ backend are on different domains. Without them, browsers block cross-origin
 requests. This middleware automatically adds the necessary
 `Access-Control-Allow-*` headers.
 
+**New to CORS?** Say your API is at `api.example.com` and your frontend is at
+`app.example.com`. Those are different origins, so when your frontend calls the
+API the browser checks whether the API said "requests from `app.example.com` are
+welcome." That permission is the `Access-Control-Allow-Origin` header, and this
+middleware is what sends it.
+
 ```php
 use Simsoft\Slim\Middlewares\CORS;
 
@@ -185,7 +191,7 @@ $app->add(new CORS());
 // Single origin
 $app->add(new CORS('https://myapp.com'));
 
-// Multiple origins (auto-detects matching origin from request)
+// Multiple origins — the caller's own origin is echoed back when allowed
 $app->add(new CORS('https://app1.com,https://app2.com'));
 
 // Custom methods
@@ -197,6 +203,38 @@ $cors->allow('Credentials', 'true')
      ->allow('Max-Age', '3600');
 $app->add($cors);
 ```
+
+### How the origin is chosen
+
+The allowed origin is worked out **fresh on every request**, from the incoming
+`Origin` header:
+
+| You configure                    | Browser sends `Origin` | Response contains                 |
+|----------------------------------|------------------------|-----------------------------------|
+| `'*'` (default)                  | anything               | `*`                               |
+| `'https://myapp.com'`            | anything               | `https://myapp.com`               |
+| `'https://a.com,https://b.com'`  | `https://a.com`        | `https://a.com`                   |
+| `'https://a.com,https://b.com'`  | `https://evil.com`     | `null` (browser blocks the reply) |
+| `'https://a.com,https://b.com'`  | *(no Origin header)*   | `null`                            |
+
+When you list **more than one** origin the header genuinely varies per caller, so
+the middleware also sends `Vary: Origin`. That tells caches to store a separate
+copy per origin — without it, a shared cache could hand `app1.com`'s response to
+`app2.com`.
+
+> **Only the `Origin` header is trusted.** `Referer` is not used, because it is
+> not an origin and can be influenced by an attacker. If a request arrives with
+> no `Origin` header, no origin is granted.
+
+Because resolution happens per request, one `CORS` instance is safe to reuse
+across many requests — including under persistent workers such as RoadRunner,
+Swoole or FrankenPHP, where the same object serves request after request.
+
+> **A note on `Credentials`.** `Access-Control-Allow-Credentials` defaults to
+> `'false'`. Only turn it on when you actually need the browser to send cookies
+> or HTTP auth cross-origin, and never combine `allow('Credentials', 'true')`
+> with a wildcard `'*'` origin — browsers reject that pairing, and it would
+> expose authenticated responses to any site.
 
 ---
 
@@ -420,6 +458,38 @@ $app->add(new RateLimit(storage: $storage));
 $storage->cleanup();
 ```
 
+#### What happens when storage breaks
+
+If the store becomes unreachable — an unwritable directory, a full disk, a Redis
+outage — the limiter cannot count anything. There are only two possible answers,
+and you pick which one you want. This applies to **every** backend; the file one
+is just the example:
+
+```php
+// Default — fail open: keep serving traffic, but stop limiting it.
+// Your site stays up; an attacker is temporarily unlimited.
+$storage = new RateLimitFileStorage('/path/to/storage');
+
+// Fail closed: reject traffic while storage is broken.
+// An attacker gets nothing; so do your real users.
+$storage = new RateLimitFileStorage('/path/to/storage', failOpen: false);
+```
+
+Fail open is the default because most apps would rather stay up. Choose
+`failOpen: false` for endpoints where abuse is more costly than downtime — login,
+password reset, payment.
+
+Either way you want to *know* it happened, so pass a PSR-3 logger. A limiter that
+silently stopped limiting looks exactly like one that is working:
+
+```php
+$storage = new RateLimitFileStorage(
+    '/path/to/storage',
+    logger: $myLogger,      // any PSR-3 logger
+    failOpen: false,
+);
+```
+
 **Redis** (distributed/multi-server):
 
 ```php
@@ -432,28 +502,67 @@ $storage = new RateLimitRedisStorage($redis, prefix: 'myapp:rate:');
 $app->add(new RateLimit(maxRequests: 100, windowSeconds: 60, storage: $storage));
 ```
 
+Requires the [phpredis](https://github.com/phpredis/phpredis) extension
+(`ext-redis`).
+
+Redis takes the same `logger` and `failOpen` options as the file backend, and
+you want them here more than there — a Redis outage takes out rate limiting for
+every server at once, not just one:
+
+```php
+$storage = new RateLimitRedisStorage(
+    $redis,
+    prefix: 'myapp:rate:',
+    logger: $myLogger,
+    failOpen: false,
+);
+```
+
 **Custom storage** — implement `RateLimitStorageInterface`:
 
 ```php
 use Simsoft\Slim\Middlewares\RateLimitStorageInterface;
+use Simsoft\Slim\Middlewares\ReportsStorageFailure;
 
 class MemcachedStorage implements RateLimitStorageInterface
 {
+    // Optional, but recommended: gives your backend the same logger and
+    // failOpen behaviour as the built-in ones, so operators do not have to
+    // learn a different failure policy per backend.
+    use ReportsStorageFailure;
+
     public function increment(string $clientId, int $windowSeconds): array
     {
-        // Your implementation
-        return ['count' => $count, 'expires' => $expires];
+        try {
+            // Your implementation
+            return ['count' => $count, 'expires' => $expires];
+        } catch (\Throwable $e) {
+            // Logs, then returns a count that either passes any limit
+            // (failOpen) or exceeds every limit (failClosed).
+            return $this->storageFailure($e->getMessage(), $windowSeconds);
+        }
     }
 }
 ```
 
-Response headers:
+Whatever you do, do not let an exception escape `increment()`. A rate limiter
+should never be the reason a request returns a 500.
+
+Response headers (sent on every response, allowed or blocked):
 
 - `X-RateLimit-Limit` — max requests allowed
 - `X-RateLimit-Remaining` — requests remaining in a window
 - `X-RateLimit-Reset` — Unix timestamp when a window resets
 
-Throws HTTP 429 when the limit is exceeded.
+When the limit is exceeded the middleware returns a `429 Too Many Requests`
+response directly, carrying the three headers above plus `Retry-After` (seconds
+until the window resets) and a short plain-text body.
+
+> **Note:** the 429 is returned, not thrown. That is what lets it keep the
+> `Retry-After` and `X-RateLimit-*` headers — Slim's error handler builds a fresh
+> response and would drop them. The trade-off is that this response does not pass
+> through a [custom error renderer](ERROR_HANDLING.md); if you need a branded 429
+> page, wrap or extend the middleware.
 
 ---
 
@@ -897,6 +1006,22 @@ $app->add(new MaintenanceMode(
     retryAfter: 1800, // 30 minutes
 ));
 ```
+
+The 503 response carries:
+
+- `Content-Type: text/plain`
+- `Retry-After` — seconds until you expect to be back (defaults to `3600`)
+- the `message` as the body (defaults to
+  `We are currently performing maintenance. Please try again later.`)
+
+`Retry-After` matters more than it looks: it is how you tell browsers, monitoring
+tools and search-engine crawlers that this is a temporary outage. Without it, a
+crawler may treat the 503 as a reason to drop your pages.
+
+> **Note:** like [RateLimit](#ratelimit), the 503 is returned directly rather than
+> thrown, so the `Retry-After` header survives. It does not pass through a
+> [custom error renderer](ERROR_HANDLING.md) — use `message` for the body, or wrap
+> the middleware if you need a full HTML maintenance page.
 
 ### Toggle via Environment Variable
 

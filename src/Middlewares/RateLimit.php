@@ -7,12 +7,17 @@ namespace Simsoft\Slim\Middlewares;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
-use Slim\Exception\HttpException;
+use Slim\Psr7\Factory\ResponseFactory;
 
 /**
  * RateLimit Class
  *
  * Rate limiting middleware with pluggable storage backend.
+ *
+ * The 429 is built and returned directly rather than thrown as an
+ * HttpException, because Slim's ErrorHandler renders a fresh response and
+ * would discard the X-RateLimit-* and Retry-After headers. The trade-off is
+ * that this response does not pass through a custom error renderer.
  */
 class RateLimit
 {
@@ -77,11 +82,29 @@ class RateLimit
         $resetAt = $result['expires'];
 
         if ($result['count'] > $this->maxRequests) {
-            throw new HttpException($request, 'Rate limit exceeded. Try again later.', 429);
+            $response = (new ResponseFactory())->createResponse(429);
+            $response->getBody()->write('Rate limit exceeded. Try again later.');
+            $response = $response->withHeader('Content-Type', 'text/plain');
+
+            // A client that is being throttled needs to know for how long,
+            // so the limit headers matter more on a 429 than on a success.
+            return $this->withLimitHeaders($response, $remaining, $resetAt)
+                ->withHeader('Retry-After', (string)max(0, $resetAt - time()));
         }
 
-        $response = $handler->handle($request);
+        return $this->withLimitHeaders($handler->handle($request), $remaining, $resetAt);
+    }
 
+    /**
+     * Attach the rate limit headers to a response.
+     *
+     * @param Response $response Response to decorate.
+     * @param int $remaining Requests left in the current window.
+     * @param int $resetAt Unix timestamp when the window resets.
+     * @return Response
+     */
+    protected function withLimitHeaders(Response $response, int $remaining, int $resetAt): Response
+    {
         return $response
             ->withHeader('X-RateLimit-Limit', (string)$this->maxRequests)
             ->withHeader('X-RateLimit-Remaining', (string)$remaining)

@@ -38,6 +38,7 @@
   },
   "require": {
     "php": ">=8.2",
+    "psr/log": "^1.1 || ^2.0 || ^3.0",
     "slim/psr7": "^1.7",
     "slim/slim": "^4"
   },
@@ -56,7 +57,13 @@
     "psr-4": {
       "Simsoft\\Slim\\Tests\\": "tests",
       "Example\\": "example"
-    }
+    },
+    "files": [
+      "tests/stubs/redis.php"
+    ]
+  },
+  "suggest": {
+    "ext-redis": "To use RateLimitRedisStorage for distributed rate limiting"
   },
   "scripts": {
     "test": "phpunit --display-deprecations --display-warnings tests",

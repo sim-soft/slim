@@ -96,13 +96,18 @@ class Response
     public function json(array $data): static
     {
         $content = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        if ($content) {
-            static::$response->getBody()->write($content);
-            static::$response = static::$response->withHeader('Content-Type', 'application/json');
-            return $this;
+
+        // json_encode() signals failure with false, which is the only value
+        // worth rejecting. A truthiness test would also reject legitimately
+        // encoded output.
+        if ($content === false) {
+            throw new Exception('Failed to convert response to JSON');
         }
 
-        throw new Exception('Failed to convert response to JSON');
+        static::$response->getBody()->write($content);
+        static::$response = static::$response->withHeader('Content-Type', 'application/json');
+
+        return $this;
     }
 
     /**
@@ -261,11 +266,13 @@ if (!function_exists('response')) {
     {
         $response = Response::getInstance();
 
-        if ($content) {
+        // Compare against null rather than testing truthiness: '0' and '' are
+        // legitimate response bodies, and a falsy check would silently drop them.
+        if ($content !== null) {
             $response->content($content);
         }
 
-        if ($code) {
+        if ($code !== null) {
             $response->status($code);
         }
 

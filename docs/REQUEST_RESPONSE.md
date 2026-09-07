@@ -117,6 +117,46 @@ request()->header('X-Custom', 'default'); // With default fallback
 request()->getBearerToken();              // Extract token from "Bearer <token>"
 ```
 
+#### Reading a bearer token
+
+API clients usually send their token in the `Authorization` header, like this:
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+`getBearerToken()` pulls just the token part out of that header:
+
+```php
+$token = request()->getBearerToken();   // "eyJhbGciOiJIUzI1NiIs..."
+```
+
+It never throws and always returns a string. When the header is missing or is
+not a bearer token, you get an empty string back — so a simple check is all you
+need:
+
+```php
+$token = request()->getBearerToken();
+
+if ($token === '') {
+    return response()->json(['error' => 'Unauthorized'])->status(401);
+}
+```
+
+| `Authorization` header             | `getBearerToken()` returns |
+|------------------------------------|----------------------------|
+| *(header absent)*                  | `''`                       |
+| `Bearer abc123`                    | `'abc123'`                 |
+| `bearer abc123`                    | `'abc123'` (scheme is case-insensitive) |
+| `  Bearer   abc123  `              | `'abc123'` (whitespace trimmed) |
+| `Basic dXNlcjpwYXNz`               | `''` (not a bearer token)  |
+| `abc123` *(no scheme)*             | `''` (malformed)           |
+| `Bearer` *(no token)*              | `''` (malformed)           |
+
+> **Note:** other schemes such as `Basic` and `Digest` return `''` on purpose.
+> A Basic header carries a base64 username/password pair, not a token — treating
+> it as one would hand your token check the wrong credentials.
+
 ### Request Attributes
 
 ```php

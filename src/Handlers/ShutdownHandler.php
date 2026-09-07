@@ -13,6 +13,22 @@ use Slim\ResponseEmitter;
 class ShutdownHandler
 {
     /**
+     * Error types that terminate the script.
+     *
+     * Only these produce an error page. Non-fatal errors (notices, warnings,
+     * deprecations) leave the already-generated response untouched.
+     *
+     * @var int
+     */
+    private const FATAL_ERRORS = E_ERROR
+        | E_PARSE
+        | E_CORE_ERROR
+        | E_CORE_WARNING
+        | E_COMPILE_ERROR
+        | E_COMPILE_WARNING
+        | E_USER_ERROR;
+
+    /**
      * @var Request
      */
     private Request $request;
@@ -49,44 +65,37 @@ class ShutdownHandler
     public function __invoke(): void
     {
         $error = error_get_last();
-        if ($error) {
-            $errorFile = $error['file'];
-            $errorLine = $error['line'];
-            $errorMessage = $error['message'];
-            $errorType = $error['type'];
-            $message = 'An error while processing your request. Please try again later.';
 
-            if ($this->displayErrorDetails) {
-                switch ($errorType) {
-                    case E_USER_ERROR:
-                        $message = "FATAL ERROR: $errorMessage. ";
-                        $message .= " on line $errorLine in file $errorFile.";
-                        break;
-
-                    case E_USER_WARNING:
-                        $message = "WARNING: $errorMessage";
-                        break;
-
-                    case E_USER_NOTICE:
-                        $message = "NOTICE: $errorMessage";
-                        break;
-
-                    default:
-                        $message = "ERROR: $errorMessage";
-                        $message .= " on line $errorLine in file $errorFile.";
-                        break;
-                }
-            }
-
-            $exception = new HttpInternalServerErrorException($this->request, $message);
-            $response = $this->errorHandler->__invoke($this->request, $exception, $this->displayErrorDetails, false, false);
-
-            if (ob_get_length()) {
-                ob_clean();
-            }
-
-            $responseEmitter = new ResponseEmitter();
-            $responseEmitter->emit($response);
+        // Nothing happened, or only a non-fatal notice/warning/deprecation was
+        // raised. The request completed normally: leave its response alone.
+        if ($error === null || ($error['type'] & self::FATAL_ERRORS) === 0) {
+            return;
         }
+
+        // The response has already been sent to the client. Appending an error
+        // page here would corrupt it, so there is nothing useful left to do.
+        if (headers_sent()) {
+            return;
+        }
+
+        $message = 'An error while processing your request. Please try again later.';
+
+        if ($this->displayErrorDetails) {
+            $message = $error['type'] === E_USER_ERROR
+                ? "FATAL ERROR: {$error['message']}."
+                : "ERROR: {$error['message']}";
+            $message .= " on line {$error['line']} in file {$error['file']}.";
+        }
+
+        $exception = new HttpInternalServerErrorException($this->request, $message);
+        $response = $this->errorHandler->__invoke($this->request, $exception, $this->displayErrorDetails, false, false);
+
+        // Discard any partial output so the error page is the only body sent.
+        while (ob_get_level() > 0 && ob_get_length() !== false) {
+            ob_end_clean();
+        }
+
+        $responseEmitter = new ResponseEmitter();
+        $responseEmitter->emit($response);
     }
 }

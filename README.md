@@ -142,7 +142,7 @@ request()->getQueryParams();           // Get URL query parameters (?key=value)
 request()->getParsedBody();            // Get POST body data
 request()->isMethod('post');           // Check HTTP method
 request()->isXHR();                    // Detect AJAX requests
-request()->getBearerToken();           // Extract "Bearer xxx" token
+request()->getBearerToken();           // Extract "Bearer xxx" token ('' if absent/not Bearer)
 request()->urlFor('users.show', ['id' => '1']); // Generate URL from route name
 request()->notFound();                 // Throw exception 404
 
@@ -255,6 +255,16 @@ Full reference: [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)
 | API Resources      | [docs/RESOURCE.md](docs/RESOURCE.md)                     |
 | Error Handling     | [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)         |
 | DataTable Plugin   | [docs/PLUGIN_DATATABLE.md](docs/PLUGIN_DATATABLE.md)     |
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). Behaviour changes are called out separately
+from fixes, so check it before upgrading.
+
+## Security
+
+Found a vulnerability? Please report it privately rather than opening a public
+issue — see [SECURITY.md](SECURITY.md).
 
 ## License
 

@@ -7,13 +7,18 @@ namespace Simsoft\Slim\Middlewares;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
-use Slim\Exception\HttpException;
+use Slim\Psr7\Factory\ResponseFactory;
 
 /**
  * MaintenanceMode Class
  *
  * Returns a 503 Service Unavailable response when maintenance mode is active.
  * Optionally allows specific IPs to bypass (e.g., developers).
+ *
+ * The 503 is built and returned directly rather than thrown as an
+ * HttpException, because Slim's ErrorHandler renders a fresh response and
+ * would discard the Retry-After header. The trade-off is that this response
+ * does not pass through a custom error renderer.
  */
 class MaintenanceMode
 {
@@ -51,7 +56,14 @@ class MaintenanceMode
             return $handler->handle($request);
         }
 
-        throw new HttpException($request, $this->message, 503);
+        $response = (new ResponseFactory())->createResponse(503);
+        $response->getBody()->write($this->message);
+
+        // Retry-After tells clients (and crawlers) when to come back, which
+        // keeps them from hammering a server that is already down.
+        return $response
+            ->withHeader('Content-Type', 'text/plain')
+            ->withHeader('Retry-After', (string)$this->retryAfter);
     }
 
     /**

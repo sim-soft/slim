@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  # Allow running the suite by hand from the Actions tab.
+  workflow_dispatch:
+
+# A newer push to the same branch makes an in-flight run obsolete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests - PHP ${{ matrix.php }} / ${{ matrix.os }} / ${{ matrix.dependencies }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Report every failing combination, not just the first one.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        # composer.json requires php >=8.2.
+        php: ['8.2', '8.3', '8.4']
+        dependencies: [highest]
+        include:
+          # The floor of the declared constraints (slim/slim ^4, slim/psr7 ^1.7).
+          # Catches use of APIs newer than the versions we claim to support.
+          - os: ubuntu-latest
+            php: '8.2'
+            dependencies: lowest
+          # ShutdownHandlerTest spawns a subprocess and branches on
+          # PHP_OS_FAMILY, so the Windows path needs real coverage.
+          - os: windows-latest
+            php: '8.4'
+            dependencies: highest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, json, libxml, simplexml
+          coverage: none
+          ini-values: error_reporting=E_ALL
+
+      - name: Get composer cache directory
+        id: composer-cache
+        shell: bash
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          # composer.lock is gitignored, so the cache is keyed on composer.json.
+          key: composer-${{ runner.os }}-${{ matrix.php }}-${{ matrix.dependencies }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ runner.os }}-${{ matrix.php }}-${{ matrix.dependencies }}-
+
+      # No composer.lock is committed, so dependencies are always resolved fresh.
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }}
+
+      - name: Run tests
+        run: composer test
+
+  static-analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Get composer cache directory
+        id: composer-cache
+        shell: bash
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-static-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ runner.os }}-static-
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      # Invoked via vendor/bin: a plain `run:` step does not get vendor/bin on
+      # PATH the way composer scripts do.
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress --error-format=github
+
+      # A hard gate now that src/ is clean. It was advisory while
+      # Request::extractData() carried a CyclomaticComplexity violation; that
+      # method has since been split, so a new violation is a real regression.
+      - name: Run PHPMD
+        run: vendor/bin/phpmd src github phpmd.xml

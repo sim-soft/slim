@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Simsoft\Slim\Tests\Resource\Serializers;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Simsoft\Resource\Exceptions\SerializationException;
@@ -265,6 +266,104 @@ class SerializersTest extends TestCase
         $this->assertSame('php', (string)$items[0]);
         $this->assertSame('api', (string)$items[1]);
         $this->assertSame('rest', (string)$items[2]);
+    }
+
+    /**
+     * Keys are often derived from database columns or user input, so they are
+     * not guaranteed to be legal XML element names.
+     *
+     * @return array<string, array{array<string, mixed>}>
+     */
+    public static function invalidElementNameProvider(): array
+    {
+        return [
+            'space in key' => [['first name' => 'Ada']],
+            'numeric leading' => [['123bad' => 'x']],
+            'angle bracket' => [['a<b' => 'x']],
+            'ampersand' => [['a&b' => 'x']],
+            'reserved xml prefix' => [['xmlReserved' => 'x']],
+            'empty key' => [['' => 'x']],
+            'null value' => [['bad key' => null]],
+            'nested array value' => [['bad key' => ['inner' => 1]]],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('invalidElementNameProvider')]
+    public function xmlSerializerProducesWellFormedXmlForInvalidElementNames(array $payload): void
+    {
+        $resource = new PassthroughTestResource($payload);
+
+        $output = (new XmlSerializer())->serialize($resource);
+
+        libxml_use_internal_errors(true);
+        libxml_clear_errors();
+        $xml = simplexml_load_string($output);
+
+        $this->assertNotFalse(
+            $xml,
+            'Output is not well-formed XML: ' . trim(libxml_get_errors()[0]->message ?? 'unknown')
+        );
+    }
+
+    #[Test]
+    public function xmlSerializerPreservesOriginalKeyInNameAttribute(): void
+    {
+        $resource = new PassthroughTestResource(['first name' => 'Ada']);
+
+        $xml = simplexml_load_string((new XmlSerializer())->serialize($resource));
+
+        $this->assertNotFalse($xml);
+        $this->assertSame('first name', (string)$xml->data->item['name']);
+        $this->assertSame('Ada', (string)$xml->data->item);
+    }
+
+    #[Test]
+    public function xmlSerializerKeepsValidElementNamesUnchanged(): void
+    {
+        $resource = new PassthroughTestResource(['ok_key' => 'v', 'also-ok.1' => 'w']);
+
+        $xml = simplexml_load_string((new XmlSerializer())->serialize($resource));
+
+        $this->assertNotFalse($xml);
+        $this->assertSame('v', (string)$xml->data->ok_key);
+        $this->assertSame('w', (string)$xml->data->{'also-ok.1'});
+    }
+
+    #[Test]
+    public function xmlSerializerRoundTripsSpecialCharactersInValues(): void
+    {
+        $resource = new PassthroughTestResource(['co' => 'Ben & Jerry', 'note' => '<b>hi</b>']);
+
+        $xml = simplexml_load_string((new XmlSerializer())->serialize($resource));
+
+        $this->assertNotFalse($xml);
+        $this->assertSame('Ben & Jerry', (string)$xml->data->co);
+        $this->assertSame('<b>hi</b>', (string)$xml->data->note);
+    }
+
+    #[Test]
+    public function xmlSerializerRendersNullAsEmptyElementAndBoolsAsText(): void
+    {
+        $resource = new PassthroughTestResource(['maybe' => null, 'yes' => true, 'no' => false]);
+
+        $xml = simplexml_load_string((new XmlSerializer())->serialize($resource));
+
+        $this->assertNotFalse($xml);
+        $this->assertSame('', (string)$xml->data->maybe);
+        $this->assertSame('true', (string)$xml->data->yes);
+        $this->assertSame('false', (string)$xml->data->no);
+    }
+}
+
+/**
+ * Resource that returns its input unchanged, for exercising serializer edge cases.
+ */
+class PassthroughTestResource extends Resource
+{
+    public function toArray(): array
+    {
+        return (array)$this->resource;
     }
 }
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Simsoft\Slim\Middlewares;
 
+use Psr\Log\LoggerInterface;
+
 /**
  * RateLimitFileStorage Class
  *
@@ -19,13 +21,27 @@ class RateLimitFileStorage implements RateLimitStorageInterface
      * Constructor.
      *
      * @param string $storagePath Directory for rate limit files. Defaults to system temp directory.
+     * @param LoggerInterface|null $logger Logger notified when storage is unavailable.
+     * @param bool $failOpen Whether to allow requests through when storage is unavailable.
+     *                       True (default) favours availability: a permissions problem or full
+     *                       disk will not take the site down, but the limiter stops limiting.
+     *                       False favours protection: requests are rejected while storage is
+     *                       broken. Prefer false for endpoints where abuse is costlier than
+     *                       downtime.
      */
-    public function __construct(string $storagePath = '')
-    {
+    public function __construct(
+        string $storagePath = '',
+        protected ?LoggerInterface $logger = null,
+        protected bool $failOpen = true,
+    ) {
         $this->storagePath = $storagePath !== '' ? $storagePath : sys_get_temp_dir() . '/slim-rate-limit';
 
+        // Suppressed for the same reason as fopen() below: the path may be
+        // unusable (already a file, or unwritable), and a raw PHP warning
+        // would leak it into the response. increment() reports the failure
+        // through the logger and applies the failOpen policy.
         if (!is_dir($this->storagePath)) {
-            mkdir($this->storagePath, 0755, true);
+            @mkdir($this->storagePath, 0755, true);
         }
     }
 
@@ -41,9 +57,22 @@ class RateLimitFileStorage implements RateLimitStorageInterface
         $file = $this->storagePath . '/' . md5($clientId) . '.json';
         $now = time();
 
-        $handle = fopen($file, 'c+');
+        // Suppressed: a failure here is reported through the logger below,
+        // and a raw PHP warning would leak the storage path into the response.
+        $handle = @fopen($file, 'c+');
+
         if ($handle === false) {
-            return ['count' => 1, 'expires' => $now + $windowSeconds];
+            // Storage is unreachable (permissions, full disk, exhausted inodes).
+            // Whichever way this resolves, it must not be silent: failing open
+            // means the limiter has stopped limiting.
+            $this->logger?->error('Rate limit storage unavailable; ' . ($this->failOpen ? 'failing open' : 'failing closed'), [
+                'file' => $file,
+                'failOpen' => $this->failOpen,
+            ]);
+
+            return $this->failOpen
+                ? ['count' => 1, 'expires' => $now + $windowSeconds]
+                : ['count' => PHP_INT_MAX, 'expires' => $now + $windowSeconds];
         }
 
         flock($handle, LOCK_EX);

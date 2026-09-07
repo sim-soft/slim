@@ -458,6 +458,37 @@ $app->add(new RateLimit(storage: $storage));
 $storage->cleanup();
 ```
 
+#### What happens when storage breaks
+
+If the storage directory becomes unwritable (bad permissions, full disk), the
+limiter cannot count anything. There are only two possible answers, and you pick
+which one you want:
+
+```php
+// Default — fail open: keep serving traffic, but stop limiting it.
+// Your site stays up; an attacker is temporarily unlimited.
+$storage = new RateLimitFileStorage('/path/to/storage');
+
+// Fail closed: reject traffic while storage is broken.
+// An attacker gets nothing; so do your real users.
+$storage = new RateLimitFileStorage('/path/to/storage', failOpen: false);
+```
+
+Fail open is the default because most apps would rather stay up. Choose
+`failOpen: false` for endpoints where abuse is more costly than downtime — login,
+password reset, payment.
+
+Either way you want to *know* it happened, so pass a PSR-3 logger. A limiter that
+silently stopped limiting looks exactly like one that is working:
+
+```php
+$storage = new RateLimitFileStorage(
+    '/path/to/storage',
+    logger: $myLogger,      // any PSR-3 logger
+    failOpen: false,
+);
+```
+
 **Redis** (distributed/multi-server):
 
 ```php
@@ -485,13 +516,21 @@ class MemcachedStorage implements RateLimitStorageInterface
 }
 ```
 
-Response headers:
+Response headers (sent on every response, allowed or blocked):
 
 - `X-RateLimit-Limit` — max requests allowed
 - `X-RateLimit-Remaining` — requests remaining in a window
 - `X-RateLimit-Reset` — Unix timestamp when a window resets
 
-Throws HTTP 429 when the limit is exceeded.
+When the limit is exceeded the middleware returns a `429 Too Many Requests`
+response directly, carrying the three headers above plus `Retry-After` (seconds
+until the window resets) and a short plain-text body.
+
+> **Note:** the 429 is returned, not thrown. That is what lets it keep the
+> `Retry-After` and `X-RateLimit-*` headers — Slim's error handler builds a fresh
+> response and would drop them. The trade-off is that this response does not pass
+> through a [custom error renderer](ERROR_HANDLING.md); if you need a branded 429
+> page, wrap or extend the middleware.
 
 ---
 
@@ -935,6 +974,22 @@ $app->add(new MaintenanceMode(
     retryAfter: 1800, // 30 minutes
 ));
 ```
+
+The 503 response carries:
+
+- `Content-Type: text/plain`
+- `Retry-After` — seconds until you expect to be back (defaults to `3600`)
+- the `message` as the body (defaults to
+  `We are currently performing maintenance. Please try again later.`)
+
+`Retry-After` matters more than it looks: it is how you tell browsers, monitoring
+tools and search-engine crawlers that this is a temporary outage. Without it, a
+crawler may treat the 503 as a reason to drop your pages.
+
+> **Note:** like [RateLimit](#ratelimit), the 503 is returned directly rather than
+> thrown, so the `Retry-After` header survives. It does not pass through a
+> [custom error renderer](ERROR_HANDLING.md) — use `message` for the body, or wrap
+> the middleware if you need a full HTML maintenance page.
 
 ### Toggle via Environment Variable
 

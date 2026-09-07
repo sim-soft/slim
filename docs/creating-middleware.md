@@ -91,6 +91,43 @@ class MaintenanceMode
 }
 ```
 
+### Throw, or return?
+
+Both work, and they are not interchangeable:
+
+| | Throwing an exception | Returning a response |
+| --- | --- | --- |
+| Goes through your [error handler](ERROR_HANDLING.md) | Yes | No |
+| Custom headers you set survive | **No** | Yes |
+| Best for | ordinary errors that should look like every other error page | responses whose headers are the point |
+
+Slim's error handler builds a **fresh** response from the exception, so any header
+you attached to the exception is discarded. If the header is the message — a
+`Retry-After` on a 503, or `X-RateLimit-*` on a 429 — build and return the
+response yourself:
+
+```php
+use Slim\Psr7\Factory\ResponseFactory;
+
+class MaintenanceMode
+{
+    public function __invoke(Request $request, RequestHandler $handler): Response
+    {
+        $response = (new ResponseFactory())->createResponse(503);
+        $response->getBody()->write('Service unavailable');
+
+        return $response
+            ->withHeader('Content-Type', 'text/plain')
+            ->withHeader('Retry-After', '3600'); // this survives
+    }
+}
+```
+
+This is exactly why the built-in
+[`MaintenanceMode`](builtin-middleware.md#maintenancemode) and
+[`RateLimit`](builtin-middleware.md#ratelimit) return their responses instead of
+throwing.
+
 ## Registering Middleware
 
 **Global middleware** applies to every route in your app. Register it with

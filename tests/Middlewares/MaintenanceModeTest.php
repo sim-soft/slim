@@ -9,7 +9,6 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Simsoft\Slim\Middlewares\MaintenanceMode;
-use Slim\Exception\HttpException;
 use Slim\Psr7\Factory\ResponseFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
 
@@ -31,18 +30,42 @@ class MaintenanceModeTest extends TestCase
         $response = $middleware($request, $this->createHandler());
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertSame(200, $response->getStatusCode());
     }
 
     #[Test]
-    public function enabledThrows503(): void
+    public function enabledReturns503(): void
     {
         $middleware = new MaintenanceMode(enabled: true);
         $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://example.com');
 
-        $this->expectException(HttpException::class);
-        $this->expectExceptionCode(503);
+        $response = $middleware($request, $this->createHandler());
 
-        $middleware($request, $this->createHandler());
+        $this->assertSame(503, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function retryAfterHeaderIsSent(): void
+    {
+        // The constructor has always accepted $retryAfter; it was never
+        // actually emitted, so clients had nothing telling them when to return.
+        $middleware = new MaintenanceMode(enabled: true, retryAfter: 120);
+        $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://example.com');
+
+        $response = $middleware($request, $this->createHandler());
+
+        $this->assertSame('120', $response->getHeaderLine('Retry-After'));
+    }
+
+    #[Test]
+    public function retryAfterDefaultsToOneHour(): void
+    {
+        $middleware = new MaintenanceMode(enabled: true);
+        $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://example.com');
+
+        $response = $middleware($request, $this->createHandler());
+
+        $this->assertSame('3600', $response->getHeaderLine('Retry-After'));
     }
 
     #[Test]
@@ -51,12 +74,10 @@ class MaintenanceModeTest extends TestCase
         $middleware = new MaintenanceMode(enabled: true, message: 'Down for upgrade');
         $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://example.com');
 
-        try {
-            $middleware($request, $this->createHandler());
-            $this->fail('Expected HttpException');
-        } catch (HttpException $ex) {
-            $this->assertSame('Down for upgrade', $ex->getMessage());
-        }
+        $response = $middleware($request, $this->createHandler());
+
+        $response->getBody()->rewind();
+        $this->assertSame('Down for upgrade', $response->getBody()->getContents());
     }
 
     #[Test]
@@ -70,7 +91,8 @@ class MaintenanceModeTest extends TestCase
 
         $response = $middleware($request, $this->createHandler());
 
-        $this->assertInstanceOf(ResponseInterface::class, $response);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('', $response->getHeaderLine('Retry-After'));
     }
 
     #[Test]
@@ -82,10 +104,9 @@ class MaintenanceModeTest extends TestCase
         );
         $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://example.com', ['REMOTE_ADDR' => '192.168.1.50']);
 
-        $this->expectException(HttpException::class);
-        $this->expectExceptionCode(503);
+        $response = $middleware($request, $this->createHandler());
 
-        $middleware($request, $this->createHandler());
+        $this->assertSame(503, $response->getStatusCode());
     }
 
     #[Test]
@@ -94,7 +115,8 @@ class MaintenanceModeTest extends TestCase
         $middleware = new MaintenanceMode(enabled: true, allowedIps: []);
         $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://example.com', ['REMOTE_ADDR' => '127.0.0.1']);
 
-        $this->expectException(HttpException::class);
-        $middleware($request, $this->createHandler());
+        $response = $middleware($request, $this->createHandler());
+
+        $this->assertSame(503, $response->getStatusCode());
     }
 }

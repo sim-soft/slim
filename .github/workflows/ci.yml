@@ -104,12 +104,14 @@ jobs:
       - name: Validate composer.json
         run: composer validate --strict
 
+      # Invoked via vendor/bin: a plain `run:` step does not get vendor/bin on
+      # PATH the way composer scripts do.
       - name: Run PHPStan
-        run: phpstan analyse --memory-limit=512M --no-progress --error-format=github
+        run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress --error-format=github
 
       # Advisory only. src/Request.php::extractData() has a pre-existing
       # CyclomaticComplexity violation, so a hard gate here would fail every
       # run until that method is refactored. Flip to a gate once it is clean.
       - name: Run PHPMD
         continue-on-error: true
-        run: phpmd src github phpmd.xml
+        run: vendor/bin/phpmd src github phpmd.xml

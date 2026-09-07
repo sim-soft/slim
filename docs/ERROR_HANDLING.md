@@ -10,7 +10,7 @@ details; in production it shows a clean error page.
 - [Configuration](#configuration)
 - [HTTP Exceptions](#http-exceptions)
 - [Custom HTTP Exceptions](#custom-http-exceptions)
-- [PHP Notices & Warnings (Shutdown Handler)](#php-notices-amp-warnings-shutdown-handler)
+- [PHP Fatal Errors (Shutdown Handler)](#php-fatal-errors-shutdown-handler)
 - [Custom Error Renderer](#custom-error-renderer)
 - [Custom Error Handler](#custom-error-handler)
 - [Error Logging](#error-logging)
@@ -119,18 +119,49 @@ Usage:
 throw new HttpGatewayTimeoutException($request);
 ```
 
-## PHP Notices & Warnings (Shutdown Handler)
+## PHP Fatal Errors (Shutdown Handler)
 
-The `ShutdownHandler` catches PHP fatal errors, notices, and warnings that occur
-after the normal error handling pipeline. It converts them into proper HTTP 500
-responses instead of blank pages.
+Some PHP errors are so severe that they stop the script instantly — a call to a
+method that does not exist, running out of memory, a parse error in an included
+file. These happen *outside* the normal try/catch pipeline, so Slim's error
+handler never sees them and the visitor gets a blank page.
 
-This is automatically registered when you call `withErrorHandler()`. It handles:
+The `ShutdownHandler` is the safety net for exactly that case. It runs at the
+very end of the request and, if the script died from a fatal error, renders a
+proper HTTP 500 page instead of nothing at all.
 
-- `E_USER_ERROR` — Fatal errors
-- `E_USER_WARNING` — Warnings
-- `E_USER_NOTICE` — Notices
-- All other error types
+It is registered automatically when you call `withErrorHandler()` — you do not
+have to do anything.
+
+### What counts as fatal
+
+Only these error types trigger the 500 page:
+
+| Error type             | Typical cause                              |
+|------------------------|--------------------------------------------|
+| `E_ERROR`              | Calling an undefined function or method    |
+| `E_PARSE`              | Syntax error in an included file           |
+| `E_CORE_ERROR`         | Failure during PHP startup                 |
+| `E_COMPILE_ERROR`      | Failure while compiling a file             |
+| `E_USER_ERROR`         | `trigger_error(..., E_USER_ERROR)`         |
+
+Everything else is left alone:
+
+- `E_WARNING`, `E_NOTICE` — e.g. reading a missing array key
+- `E_DEPRECATED`, `E_USER_DEPRECATED` — e.g. a library warning about PHP 8.5
+- `E_USER_WARNING`, `E_USER_NOTICE`
+
+> **Why this matters:** these non-fatal errors do **not** stop your script. Your
+> route already ran, already returned its `200 OK`, and the response is on its
+> way to the browser. Turning that into a 500 at the last second would break a
+> request that actually succeeded. A single deprecation notice from a third-party
+> package should never take your API down.
+>
+> Non-fatal errors still belong in your logs — use PHP's `error_log` or a PSR-3
+> logger for those. The shutdown handler's job is only the blank-page case.
+
+The handler also stays quiet if the response has already been sent to the
+browser, since appending an error page at that point would only corrupt it.
 
 When `displayError` is `true`, the error message includes the file and line
 number. When `false`, it shows a generic "An error while processing your
@@ -148,15 +179,21 @@ use Simsoft\Slim\Handlers\ShutdownHandler;
 
 class CustomShutdownHandler extends ShutdownHandler
 {
+    /** Error types that stop the script dead. */
+    private const FATAL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR;
+
     public function __invoke(): void
     {
         $error = error_get_last();
-        if ($error) {
+
+        // Only alert on real fatals. Without this check you would page the
+        // team every time a library emits a deprecation notice.
+        if ($error !== null && ($error['type'] & self::FATAL) !== 0) {
             // Send alert, log to external service, etc.
             $this->notifyTeam($error);
         }
 
-        // Call parent to handle the response
+        // Call parent to render the 500 response
         parent::__invoke();
     }
 

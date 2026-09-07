@@ -103,6 +103,51 @@ class RequestTest extends TestCase
     }
 
     #[Test]
+    public function getBearerTokenAcceptsSchemeCaseInsensitively(): void
+    {
+        Request::$request = Request::$request->withHeader('Authorization', 'bearer abc123token');
+
+        $this->assertSame('abc123token', Request::getInstance()->getBearerToken());
+    }
+
+    #[Test]
+    public function getBearerTokenTrimsSurroundingWhitespace(): void
+    {
+        Request::$request = Request::$request->withHeader('Authorization', 'Bearer   abc123token  ');
+
+        $this->assertSame('abc123token', Request::getInstance()->getBearerToken());
+    }
+
+    #[Test]
+    public function getBearerTokenReturnsEmptyForSchemelessHeader(): void
+    {
+        // Must not raise a warning or TypeError: this header is client-controlled.
+        Request::$request = Request::$request->withHeader('Authorization', 'abc123token');
+
+        $this->assertSame('', Request::getInstance()->getBearerToken());
+    }
+
+    #[Test]
+    public function getBearerTokenRejectsNonBearerSchemes(): void
+    {
+        // Returning these would hand back a Basic/Digest credential as if it
+        // were a validated bearer token.
+        foreach (['Basic dXNlcjpwYXNz', 'Digest xyz', 'Negotiate abc'] as $header) {
+            Request::$request = Request::$request->withHeader('Authorization', $header);
+
+            $this->assertSame('', Request::getInstance()->getBearerToken(), "header: $header");
+        }
+    }
+
+    #[Test]
+    public function getBearerTokenReturnsEmptyForSchemeWithoutCredentials(): void
+    {
+        Request::$request = Request::$request->withHeader('Authorization', 'Bearer');
+
+        $this->assertSame('', Request::getInstance()->getBearerToken());
+    }
+
+    #[Test]
     public function magicCallDelegatesToPsr7Request(): void
     {
         $request = Request::getInstance();

@@ -212,6 +212,44 @@ response()->resource(UserResource::make($user), serializer: new XmlSerializer())
 // Content-Type: application/xml
 ```
 
+### Keys that XML cannot use as tag names
+
+XML is stricter than JSON about names. A tag name has to start with a letter or
+an underscore, and it cannot contain spaces. So `first_name` is fine, but
+`first name`, `2fa` and `user-id!` are not.
+
+Your array keys often come from database columns or client input, so you cannot
+always guarantee they are legal. Rather than emit broken XML, the serializer
+swaps any unusable key for an `<item>` element and keeps the original key in a
+`name` attribute:
+
+```php
+// Resource data
+['first_name' => 'Ada', 'home address' => 'Somewhere', '2fa' => true]
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+  <data>
+    <first_name>Ada</first_name>
+    <item name="home address">Somewhere</item>
+    <item name="2fa">true</item>
+  </data>
+</response>
+```
+
+Valid keys are always used as-is, so nothing changes for normal data. The output
+is guaranteed to parse — you will never get an XML parse error just because of a
+key name.
+
+> **Tip:** if you want clean tag names in your XML, rename the keys inside your
+> resource's `toArray()` — for example map `'home address'` to `'home_address'`.
+
+Values are escaped for you, so `&`, `<`, `>` and quotes in your data are safe.
+`null` becomes an empty element, and `true`/`false` become the text `true` and
+`false`.
+
 Custom serializer — implement `ResourceSerializerInterface`:
 
 ```php

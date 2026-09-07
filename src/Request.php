@@ -281,15 +281,27 @@ class Request
     /**
      * Get bearer token.
      *
-     * @return string
+     * Returns the credentials from an `Authorization: Bearer <token>` header.
+     * Any other scheme (Basic, Digest, ...) or a malformed header yields an
+     * empty string, so a non-bearer credential is never mistaken for a token.
+     *
+     * @return string The bearer token, or an empty string when absent/invalid.
      */
     public function getBearerToken(): string
     {
-        $value = $this->header('Authorization');
-        if ($value) {
-            [, $value] = explode(' ', $value);
+        $value = trim($this->header('Authorization'));
+        if ($value === '') {
+            return '';
         }
-        return $value;
+
+        $parts = preg_split('/\s+/', $value, 2);
+        if ($parts === false || count($parts) !== 2) {
+            return '';
+        }
+
+        [$scheme, $token] = $parts;
+
+        return strcasecmp($scheme, 'Bearer') === 0 ? trim($token) : '';
     }
 
     /**

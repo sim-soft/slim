@@ -176,6 +176,12 @@ backend are on different domains. Without them, browsers block cross-origin
 requests. This middleware automatically adds the necessary
 `Access-Control-Allow-*` headers.
 
+**New to CORS?** Say your API is at `api.example.com` and your frontend is at
+`app.example.com`. Those are different origins, so when your frontend calls the
+API the browser checks whether the API said "requests from `app.example.com` are
+welcome." That permission is the `Access-Control-Allow-Origin` header, and this
+middleware is what sends it.
+
 ```php
 use Simsoft\Slim\Middlewares\CORS;
 
@@ -185,7 +191,7 @@ $app->add(new CORS());
 // Single origin
 $app->add(new CORS('https://myapp.com'));
 
-// Multiple origins (auto-detects matching origin from request)
+// Multiple origins — the caller's own origin is echoed back when allowed
 $app->add(new CORS('https://app1.com,https://app2.com'));
 
 // Custom methods
@@ -197,6 +203,38 @@ $cors->allow('Credentials', 'true')
      ->allow('Max-Age', '3600');
 $app->add($cors);
 ```
+
+### How the origin is chosen
+
+The allowed origin is worked out **fresh on every request**, from the incoming
+`Origin` header:
+
+| You configure                    | Browser sends `Origin` | Response contains                 |
+|----------------------------------|------------------------|-----------------------------------|
+| `'*'` (default)                  | anything               | `*`                               |
+| `'https://myapp.com'`            | anything               | `https://myapp.com`               |
+| `'https://a.com,https://b.com'`  | `https://a.com`        | `https://a.com`                   |
+| `'https://a.com,https://b.com'`  | `https://evil.com`     | `null` (browser blocks the reply) |
+| `'https://a.com,https://b.com'`  | *(no Origin header)*   | `null`                            |
+
+When you list **more than one** origin the header genuinely varies per caller, so
+the middleware also sends `Vary: Origin`. That tells caches to store a separate
+copy per origin — without it, a shared cache could hand `app1.com`'s response to
+`app2.com`.
+
+> **Only the `Origin` header is trusted.** `Referer` is not used, because it is
+> not an origin and can be influenced by an attacker. If a request arrives with
+> no `Origin` header, no origin is granted.
+
+Because resolution happens per request, one `CORS` instance is safe to reuse
+across many requests — including under persistent workers such as RoadRunner,
+Swoole or FrankenPHP, where the same object serves request after request.
+
+> **A note on `Credentials`.** `Access-Control-Allow-Credentials` defaults to
+> `'false'`. Only turn it on when you actually need the browser to send cookies
+> or HTTP auth cross-origin, and never combine `allow('Credentials', 'true')`
+> with a wildcard `'*'` origin — browsers reject that pairing, and it would
+> expose authenticated responses to any site.
 
 ---
 

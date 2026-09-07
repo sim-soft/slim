@@ -142,7 +142,7 @@ request()->getQueryParams();           // Get URL query parameters (?key=value)
 request()->getParsedBody();            // Get POST body data
 request()->isMethod('post');           // Check HTTP method
 request()->isXHR();                    // Detect AJAX requests
-request()->getBearerToken();           // Extract "Bearer xxx" token
+request()->getBearerToken();           // Extract "Bearer xxx" token ('' if absent/not Bearer)
 request()->urlFor('users.show', ['id' => '1']); // Generate URL from route name
 request()->notFound();                 // Throw exception 404
 

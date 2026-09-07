@@ -158,9 +158,8 @@ class CORSTest extends TestCase
     }
 
     #[Test]
-    public function multipleOriginsWithNoMatchReturnsNull(): void
+    public function multipleOriginsWithNoOriginHeaderReturnsNull(): void
     {
-        // Without HTTP_ORIGIN set, parseOrigins returns 'null'
         $cors = new CORS('https://app1.com,https://app2.com');
         $response = $cors($this->request, $this->handler);
 
@@ -168,54 +167,121 @@ class CORSTest extends TestCase
     }
 
     #[Test]
-    public function parseOriginsWithMatchingOrigin(): void
+    public function allowedOriginIsEchoedFromRequestHeader(): void
+    {
+        $cors = new CORS('https://app1.com,https://app2.com');
+        $request = $this->request->withHeader('Origin', 'https://app1.com');
+
+        $response = $cors($request, $this->handler);
+
+        $this->assertSame('https://app1.com', $response->getHeaderLine('Access-Control-Allow-Origin'));
+    }
+
+    #[Test]
+    public function disallowedOriginReturnsNull(): void
+    {
+        $cors = new CORS('https://app1.com,https://app2.com');
+        $request = $this->request->withHeader('Origin', 'https://evil.com');
+
+        $response = $cors($request, $this->handler);
+
+        $this->assertSame('null', $response->getHeaderLine('Access-Control-Allow-Origin'));
+    }
+
+    #[Test]
+    public function refererIsNotUsedToResolveOrigin(): void
+    {
+        // Referer is attacker-influenceable and is not an origin. It must never
+        // be used to satisfy the allow list.
+        $cors = new CORS('https://app1.com,https://app2.com');
+        $request = $this->request->withHeader('Referer', 'https://app2.com/page');
+
+        $response = $cors($request, $this->handler);
+
+        $this->assertSame('null', $response->getHeaderLine('Access-Control-Allow-Origin'));
+    }
+
+    #[Test]
+    public function superglobalsAreNotUsedToResolveOrigin(): void
     {
         $_SERVER['HTTP_ORIGIN'] = 'https://app1.com';
 
-        $cors = new CORS('https://app1.com,https://app2.com');
-        $response = $cors($this->request, $this->handler);
+        try {
+            $cors = new CORS('https://app1.com,https://app2.com');
+            // The PSR-7 request carries no Origin header, so the superglobal
+            // must not leak in.
+            $response = $cors($this->request, $this->handler);
 
-        $this->assertSame('https://app1.com', $response->getHeaderLine('Access-Control-Allow-Origin'));
-
-        unset($_SERVER['HTTP_ORIGIN']);
+            $this->assertSame('null', $response->getHeaderLine('Access-Control-Allow-Origin'));
+        } finally {
+            unset($_SERVER['HTTP_ORIGIN']);
+        }
     }
 
     #[Test]
-    public function parseOriginsWithNonMatchingOrigin(): void
+    public function originListHandlesSpaces(): void
     {
-        $_SERVER['HTTP_ORIGIN'] = 'https://evil.com';
+        $cors = new CORS('https://app1.com, https://app2.com');
+        $request = $this->request->withHeader('Origin', 'https://app2.com');
 
-        $cors = new CORS('https://app1.com,https://app2.com');
-        $response = $cors($this->request, $this->handler);
-
-        $this->assertSame('null', $response->getHeaderLine('Access-Control-Allow-Origin'));
-
-        unset($_SERVER['HTTP_ORIGIN']);
-    }
-
-    #[Test]
-    public function parseOriginsWithRefererFallback(): void
-    {
-        $_SERVER['HTTP_REFERER'] = 'https://app2.com';
-
-        $cors = new CORS('https://app1.com,https://app2.com');
-        $response = $cors($this->request, $this->handler);
+        $response = $cors($request, $this->handler);
 
         $this->assertSame('https://app2.com', $response->getHeaderLine('Access-Control-Allow-Origin'));
-
-        unset($_SERVER['HTTP_REFERER']);
     }
 
     #[Test]
-    public function parseOriginsHandlesSpacesInList(): void
+    public function originIsResolvedPerRequestOnASharedInstance(): void
     {
-        $_SERVER['HTTP_ORIGIN'] = 'https://app1.com';
+        // A single instance reused across requests (persistent workers, or a
+        // container-shared service) must not pin the first caller's origin.
+        $cors = new CORS('https://app1.com,https://app2.com');
 
-        $cors = new CORS('https://app1.com, https://app2.com');
+        $first = $cors($this->request->withHeader('Origin', 'https://app1.com'), $this->handler);
+        $second = $cors($this->request->withHeader('Origin', 'https://app2.com'), $this->handler);
+
+        $this->assertSame('https://app1.com', $first->getHeaderLine('Access-Control-Allow-Origin'));
+        $this->assertSame('https://app2.com', $second->getHeaderLine('Access-Control-Allow-Origin'));
+    }
+
+    #[Test]
+    public function varyOriginIsSetWhenOriginListIsRestricted(): void
+    {
+        $cors = new CORS('https://app1.com,https://app2.com');
+        $request = $this->request->withHeader('Origin', 'https://app1.com');
+
+        $response = $cors($request, $this->handler);
+
+        $this->assertStringContainsString('Origin', $response->getHeaderLine('Vary'));
+    }
+
+    #[Test]
+    public function varyOriginIsNotSetForWildcardOrigin(): void
+    {
+        $cors = new CORS();
         $response = $cors($this->request, $this->handler);
 
-        $this->assertSame('https://app1.com', $response->getHeaderLine('Access-Control-Allow-Origin'));
+        $this->assertFalse($response->hasHeader('Vary'));
+    }
 
-        unset($_SERVER['HTTP_ORIGIN']);
+    #[Test]
+    public function varyOriginIsNotSetForASingleOrigin(): void
+    {
+        // A single configured origin is a constant value, so it does not vary.
+        $cors = new CORS('https://myapp.com');
+        $response = $cors($this->request, $this->handler);
+
+        $this->assertFalse($response->hasHeader('Vary'));
+    }
+
+    #[Test]
+    public function singleOriginIsEmittedRegardlessOfRequestOrigin(): void
+    {
+        $cors = new CORS('https://myapp.com');
+        $request = $this->request->withHeader('Origin', 'https://evil.com');
+
+        $response = $cors($request, $this->handler);
+
+        // The browser itself rejects the mismatch; the header stays constant.
+        $this->assertSame('https://myapp.com', $response->getHeaderLine('Access-Control-Allow-Origin'));
     }
 }

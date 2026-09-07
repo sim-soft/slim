@@ -48,11 +48,12 @@ report indefinitely.
 
 | Version | Supported |
 | ------- | --------- |
-| 2.x     | Yes       |
+| 3.x     | Yes       |
+| 2.x     | No        |
 | 1.x     | No        |
 
-Fixes land on the latest 2.x release. If you are on 1.x, upgrading is the
-remedy.
+Fixes land on the latest 3.x release. If you are on an older line, upgrading is
+the remedy — see [CHANGELOG.md](CHANGELOG.md) for what 3.0.0 changed.
 
 Only PHP versions that are themselves
 [actively supported](https://www.php.net/supported-versions.php) are covered.

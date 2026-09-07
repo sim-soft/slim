@@ -383,33 +383,65 @@ class Request
      */
     protected function extractData(array $data, string|array|null $key, mixed $default): mixed
     {
-        $sanitizer = static::$sanitizer;
-
         // Return all data
         if ($key === null) {
-            if ($sanitizer === null) {
-                return $data;
-            }
-            $result = [];
-            foreach ($data as $name => $value) {
-                $result[$name] = $sanitizer($value, $name);
-            }
-            return $result;
+            return $this->sanitizeAll($data);
         }
 
         // Single key
         if (is_string($key)) {
-            $value = array_key_exists($key, $data) ? $data[$key] : $default;
-            return $sanitizer ? $sanitizer($value, $key) : $value;
+            return $this->sanitizeOne($data, $key, $default);
         }
 
         // Array of keys
         $result = [];
         foreach ($key as $name) {
-            $value = array_key_exists($name, $data) ? $data[$name] : $default;
-            $result[$name] = $sanitizer ? $sanitizer($value, $name) : $value;
+            $result[$name] = $this->sanitizeOne($data, $name, $default);
         }
         return $result;
+    }
+
+    /**
+     * Sanitize every value in an array, keyed by its own key.
+     *
+     * @param array<string, mixed> $data Source data array.
+     * @return array<string, mixed>
+     */
+    protected function sanitizeAll(array $data): array
+    {
+        $sanitizer = static::$sanitizer;
+
+        // Returned untouched rather than rebuilt: with no sanitizer there is
+        // nothing to apply, and the copy would be pure overhead.
+        if ($sanitizer === null) {
+            return $data;
+        }
+
+        $result = [];
+        foreach ($data as $name => $value) {
+            $result[$name] = $sanitizer($value, $name);
+        }
+        return $result;
+    }
+
+    /**
+     * Read one key, falling back to a default, and sanitize the result.
+     *
+     * The default is sanitized too. It is usually a constant supplied by the
+     * caller, but it reaches the application through the same path as user
+     * input, so it goes through the same filter.
+     *
+     * @param array<string, mixed> $data Source data array.
+     * @param string $key Key name.
+     * @param mixed $default Default value when key is not found.
+     * @return mixed
+     */
+    protected function sanitizeOne(array $data, string $key, mixed $default): mixed
+    {
+        $sanitizer = static::$sanitizer;
+        $value = array_key_exists($key, $data) ? $data[$key] : $default;
+
+        return $sanitizer === null ? $value : $sanitizer($value, $key);
     }
 
 

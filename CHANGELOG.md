@@ -82,8 +82,19 @@ relying on. Read **Changed** before upgrading.
   transitively via `slim/slim`, so a future Slim release dropping that
   dependency would have broken the package.
 - A CI workflow covering PHP 8.2, 8.3, and 8.4 on Linux, PHP 8.4 on Windows,
-  and a lowest-dependency build, plus PHPStan level 8 and `composer validate`.
+  and a lowest-dependency build, plus PHPStan level 8, PHPMD, and
+  `composer validate`.
 - Test coverage for `RateLimitRedisStorage`, which previously had none.
+- `SECURITY.md`, with a private disclosure route and the distinction between a
+  vulnerability and a documented configuration trade-off.
+- This changelog.
+
+### Internal
+
+- `Request::extractData()` split into `sanitizeAll()` and `sanitizeOne()`,
+  clearing the last PHPMD violation in `src/` so PHPMD is now a CI gate rather
+  than advisory. Behaviour is unchanged: the new tests covering sanitized
+  defaults pass against both the old and new implementations.
 
 ### Fixed (security-relevant)
 

@@ -256,6 +256,16 @@ Full reference: [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)
 | Error Handling     | [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md)         |
 | DataTable Plugin   | [docs/PLUGIN_DATATABLE.md](docs/PLUGIN_DATATABLE.md)     |
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). Behaviour changes are called out separately
+from fixes, so check it before upgrading.
+
+## Security
+
+Found a vulnerability? Please report it privately rather than opening a public
+issue — see [SECURITY.md](SECURITY.md).
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.

@@ -220,6 +220,58 @@ class RequestQueryInputFilesTest extends TestCase
     }
 
     #[Test]
+    public function sanitizerIsAppliedToTheDefaultOfAMissingKey(): void
+    {
+        // The default reaches the application through the same path as user
+        // input, so it goes through the same filter. Skipping it would mean a
+        // sanitizer that normalises types silently stops doing so whenever a
+        // key happens to be absent.
+        Request::setSanitizer(fn($value, $key) => is_string($value) ? strtoupper($value) : $value);
+
+        $this->assertSame('FALLBACK', Request::getInstance()->query('nope', 'fallback'));
+    }
+
+    #[Test]
+    public function sanitizerIsAppliedToDefaultsForMultipleMissingKeys(): void
+    {
+        Request::setSanitizer(fn($value, $key) => is_string($value) ? strtoupper($value) : $value);
+
+        $result = Request::getInstance()->query(['page', 'missing'], 'fallback');
+
+        // Present keys and defaulted keys are filtered the same way.
+        $this->assertSame(['page' => '2', 'missing' => 'FALLBACK'], $result);
+    }
+
+    #[Test]
+    public function sanitizerReceivesTheKeyNameForADefaultedValue(): void
+    {
+        $received = [];
+        Request::setSanitizer(function ($value, $key) use (&$received) {
+            $received[$key] = $value;
+            return $value;
+        });
+
+        Request::getInstance()->query('absent', 'the-default');
+
+        // The key is reported even though it was not in the request, so a
+        // key-dependent sanitizer behaves consistently either way.
+        $this->assertSame(['absent' => 'the-default'], $received);
+    }
+
+    #[Test]
+    public function nullDefaultIsStillPassedThroughTheSanitizer(): void
+    {
+        $calls = 0;
+        Request::setSanitizer(function ($value, $key) use (&$calls) {
+            $calls++;
+            return $value ?? 'was-null';
+        });
+
+        $this->assertSame('was-null', Request::getInstance()->query('absent'));
+        $this->assertSame(1, $calls);
+    }
+
+    #[Test]
     public function sanitizerCanBeDisabled(): void
     {
         Request::setSanitizer(fn($value, $key) => 'SANITIZED');

@@ -8,7 +8,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Psr\Log\AbstractLogger;
 use Simsoft\Slim\Middlewares\RateLimit;
 use Simsoft\Slim\Middlewares\RateLimitFileStorage;
 use Simsoft\Slim\Middlewares\RateLimitStorageInterface;
@@ -295,16 +294,7 @@ class RateLimitTest extends TestCase
     {
         // Failing open silently is the actual hazard: the limiter stops
         // limiting and nothing says so.
-        $logger = new class extends AbstractLogger {
-            /** @var array<int, string> */
-            public array $messages = [];
-
-            public function log($level, \Stringable|string $message, array $context = []): void
-            {
-                $this->messages[] = (string)$message;
-            }
-        };
-
+        $logger = new CollectingLogger();
         $path = $this->unopenableStoragePath();
 
         try {

@@ -460,9 +460,10 @@ $storage->cleanup();
 
 #### What happens when storage breaks
 
-If the storage directory becomes unwritable (bad permissions, full disk), the
-limiter cannot count anything. There are only two possible answers, and you pick
-which one you want:
+If the store becomes unreachable — an unwritable directory, a full disk, a Redis
+outage — the limiter cannot count anything. There are only two possible answers,
+and you pick which one you want. This applies to **every** backend; the file one
+is just the example:
 
 ```php
 // Default — fail open: keep serving traffic, but stop limiting it.
@@ -501,20 +502,51 @@ $storage = new RateLimitRedisStorage($redis, prefix: 'myapp:rate:');
 $app->add(new RateLimit(maxRequests: 100, windowSeconds: 60, storage: $storage));
 ```
 
+Requires the [phpredis](https://github.com/phpredis/phpredis) extension
+(`ext-redis`).
+
+Redis takes the same `logger` and `failOpen` options as the file backend, and
+you want them here more than there — a Redis outage takes out rate limiting for
+every server at once, not just one:
+
+```php
+$storage = new RateLimitRedisStorage(
+    $redis,
+    prefix: 'myapp:rate:',
+    logger: $myLogger,
+    failOpen: false,
+);
+```
+
 **Custom storage** — implement `RateLimitStorageInterface`:
 
 ```php
 use Simsoft\Slim\Middlewares\RateLimitStorageInterface;
+use Simsoft\Slim\Middlewares\ReportsStorageFailure;
 
 class MemcachedStorage implements RateLimitStorageInterface
 {
+    // Optional, but recommended: gives your backend the same logger and
+    // failOpen behaviour as the built-in ones, so operators do not have to
+    // learn a different failure policy per backend.
+    use ReportsStorageFailure;
+
     public function increment(string $clientId, int $windowSeconds): array
     {
-        // Your implementation
-        return ['count' => $count, 'expires' => $expires];
+        try {
+            // Your implementation
+            return ['count' => $count, 'expires' => $expires];
+        } catch (\Throwable $e) {
+            // Logs, then returns a count that either passes any limit
+            // (failOpen) or exceeds every limit (failClosed).
+            return $this->storageFailure($e->getMessage(), $windowSeconds);
+        }
     }
 }
 ```
+
+Whatever you do, do not let an exception escape `increment()`. A rate limiter
+should never be the reason a request returns a 500.
 
 Response headers (sent on every response, allowed or blocked):
 

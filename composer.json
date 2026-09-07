@@ -57,7 +57,13 @@
     "psr-4": {
       "Simsoft\\Slim\\Tests\\": "tests",
       "Example\\": "example"
-    }
+    },
+    "files": [
+      "tests/stubs/redis.php"
+    ]
+  },
+  "suggest": {
+    "ext-redis": "To use RateLimitRedisStorage for distributed rate limiting"
   },
   "scripts": {
     "test": "phpunit --display-deprecations --display-warnings tests",

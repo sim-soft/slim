@@ -14,6 +14,8 @@ use Psr\Log\LoggerInterface;
  */
 class RateLimitFileStorage implements RateLimitStorageInterface
 {
+    use ReportsStorageFailure;
+
     /** @var string Storage directory path. */
     protected string $storagePath;
 
@@ -31,10 +33,12 @@ class RateLimitFileStorage implements RateLimitStorageInterface
      */
     public function __construct(
         string $storagePath = '',
-        protected ?LoggerInterface $logger = null,
-        protected bool $failOpen = true,
+        ?LoggerInterface $logger = null,
+        bool $failOpen = true,
     ) {
         $this->storagePath = $storagePath !== '' ? $storagePath : sys_get_temp_dir() . '/slim-rate-limit';
+        $this->logger = $logger;
+        $this->failOpen = $failOpen;
 
         // Suppressed for the same reason as fopen() below: the path may be
         // unusable (already a file, or unwritable), and a raw PHP warning
@@ -63,16 +67,7 @@ class RateLimitFileStorage implements RateLimitStorageInterface
 
         if ($handle === false) {
             // Storage is unreachable (permissions, full disk, exhausted inodes).
-            // Whichever way this resolves, it must not be silent: failing open
-            // means the limiter has stopped limiting.
-            $this->logger?->error('Rate limit storage unavailable; ' . ($this->failOpen ? 'failing open' : 'failing closed'), [
-                'file' => $file,
-                'failOpen' => $this->failOpen,
-            ]);
-
-            return $this->failOpen
-                ? ['count' => 1, 'expires' => $now + $windowSeconds]
-                : ['count' => PHP_INT_MAX, 'expires' => $now + $windowSeconds];
+            return $this->storageFailure('cannot open ' . $file, $windowSeconds, ['file' => $file]);
         }
 
         flock($handle, LOCK_EX);

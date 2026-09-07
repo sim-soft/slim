@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-09-07
+
 Everything below is a bug fix, but four of them change behaviour you may be
 relying on. Read **Changed** before upgrading.
+
+The major version is required by three of those: `CORS::parseOrigins()` is gone,
+and `MaintenanceMode` and `RateLimit` no longer throw `HttpException`. If you
+touch none of the three, the upgrade is a no-op.
 
 ### Changed
 
@@ -136,5 +142,6 @@ suite, and the documentation site.
 No changelog was kept for these releases. See the
 [commit history](https://github.com/sim-soft/slim/commits/master) for details.
 
-[Unreleased]: https://github.com/sim-soft/slim/compare/2.0.0...HEAD
+[Unreleased]: https://github.com/sim-soft/slim/compare/3.0.0...HEAD
+[3.0.0]: https://github.com/sim-soft/slim/compare/2.0.0...3.0.0
 [2.0.0]: https://github.com/sim-soft/slim/releases/tag/2.0.0
